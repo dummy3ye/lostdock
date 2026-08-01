@@ -232,6 +232,24 @@ pyinstaller lostdock.spec          # creates dist/lostdock
 - **macOS:** bundle into `dist/lostdock.app` (sign with `codesign` for distribution)
 - **Linux:** `dist/lostdock` binary, or wrap in an AppImage/Flatpak
 
+## Releases
+
+Releases are tag-driven and automated. Cutting a new release requires `git-cliff`
+(`cargo install git-cliff`):
+
+```bash
+make release                # bumps the version, regenerates CHANGELOG.md, commits and tags
+```
+
+`make release` reads the conventional commits since the last tag to pick the next
+semver version (or pass one explicitly: `./scripts/release.sh 0.2.0`). It then bumps
+the version in `pyproject.toml` and `src/lostdock/__init__.py`, runs the test suite,
+regenerates `CHANGELOG.md`, and creates an annotated `vX.Y.Z` tag.
+
+Pushing the tag triggers CI, which builds the Windows/Linux binaries and publishes a
+GitHub Release with auto-generated notes (grouped features/fixes, issue references,
+and contributors) via [git-cliff](https://git-cliff.org).
+
 ## Development
 
 ```bash

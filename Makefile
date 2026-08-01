@@ -1,4 +1,4 @@
-.PHONY: install test run build clean
+.PHONY: install test run build release clean
 
 install:
 	uv venv
@@ -13,6 +13,9 @@ run:
 build:
 	uv pip install pyinstaller
 	pyinstaller lostdock.spec
+
+release:
+	./scripts/release.sh
 
 clean:
 	rm -rf build dist .pytest_cache

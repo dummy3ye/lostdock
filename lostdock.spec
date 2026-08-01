@@ -10,10 +10,16 @@
 
 import os
 import sys
+import tomllib
 
 from PyInstaller.utils.hooks import collect_data_files
 
 block_cipher = None
+
+# Read the project version from pyproject.toml so binaries carry the release tag.
+with open(os.path.join(os.path.dirname(os.path.abspath(SPEC)), "pyproject.toml"), "rb") as _f:
+    _pyproject = tomllib.load(_f)
+version = _pyproject["project"]["version"]
 
 datas = []
 # Bundle the example plugins directory so plugins ship inside the binary.
@@ -107,7 +113,7 @@ if sys.platform == "darwin":
         icon=None,
         bundle_identifier="dev.lostdock.app",
         info_plist={
-            "CFBundleShortVersionString": "0.1.0",
+            "CFBundleShortVersionString": version,
             "NSHighResolutionCapable": True,
         },
     )
