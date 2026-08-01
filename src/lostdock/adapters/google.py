@@ -26,6 +26,53 @@ USER_AGENTS = [
 ]
 
 
+def _parse_google_serp(
+    html: str, query: str, position_offset: int = 0
+) -> List[SearchResult]:
+    """Extract organic results from a Google SERP page."""
+    soup = BeautifulSoup(html, "html.parser")
+    results: List[SearchResult] = []
+    for i, a in enumerate(soup.select("a[href]")):
+        href = a.get("href", "")
+        if not href.startswith("http") and "/url?q=" not in href:
+            continue
+        url = href
+        if href.startswith("/url?q="):
+            from urllib.parse import parse_qs, urlparse
+
+            parsed = parse_qs(urlparse(href).query)
+            url = parsed.get("q", [""])[0]
+
+        # Skip google's own links and navigation.
+        if any(x in url for x in ("google.com", "google.", "/search", "gstatic")):
+            continue
+
+        # Reject known non-result / javascript links.
+        if url.startswith(("javascript:", "data:")):
+            continue
+
+        # Grab title from parent heading or link text.
+        container = a.find_parent("h3") or a.parent
+        title = (a.get_text(" ", strip=True) or container.get_text(" ", strip=True) if container else "")[:300]
+
+        snippet = ""
+        parent = a.find_parent("div")
+        if parent:
+            snippet = parent.get_text(" ", strip=True)[:400]
+
+        results.append(
+            SearchResult(
+                title=title,
+                url=url,
+                snippet=snippet,
+                engine="google",
+                position=position_offset + i + 1,
+                query=query,
+            )
+        )
+    return results
+
+
 def _google_429_message(query: str) -> str:
     return (
         f"Google is rate-limiting requests after several retries (429): {query!r}. "
@@ -123,47 +170,7 @@ class GoogleEngine(SearchEngine):
         time.sleep(delay)
 
     def _parse(self, html: str, query: str, position_offset: int = 0) -> List[SearchResult]:
-        soup = BeautifulSoup(html, "html.parser")
-        results: List[SearchResult] = []
-        for i, a in enumerate(soup.select("a[href]")):
-            href = a.get("href", "")
-            if not href.startswith("http") and "/url?q=" not in href:
-                continue
-            url = href
-            if href.startswith("/url?q="):
-                from urllib.parse import parse_qs, urlparse
-
-                parsed = parse_qs(urlparse(href).query)
-                url = parsed.get("q", [""])[0]
-
-            # Skip google's own links and navigation.
-            if any(x in url for x in ("google.com", "google.", "/search", "gstatic")):
-                continue
-
-            # Reject known non-result / javascript links.
-            if url.startswith(("javascript:", "data:")):
-                continue
-
-            # Grab title from parent heading or link text.
-            container = a.find_parent("h3") or a.parent
-            title = (a.get_text(" ", strip=True) or container.get_text(" ", strip=True) if container else "")[:300]
-
-            snippet = ""
-            parent = a.find_parent("div")
-            if parent:
-                snippet = parent.get_text(" ", strip=True)[:400]
-
-            results.append(
-                SearchResult(
-                    title=title,
-                    url=url,
-                    snippet=snippet,
-                    engine=self.name,
-                    position=position_offset + i + 1,
-                    query=query,
-                )
-            )
-        return results
+        return _parse_google_serp(html, query, position_offset=position_offset)
 
     def search(
         self,
