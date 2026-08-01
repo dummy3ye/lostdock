@@ -26,6 +26,14 @@ USER_AGENTS = [
 ]
 
 
+def _google_429_message(query: str) -> str:
+    return (
+        f"Google is rate-limiting requests after several retries (429): {query!r}. "
+        "Google blocks datacenter IPs aggressively. Try: (1) adding proxies in Tools -> Settings, "
+        "or (2) switching to the DuckDuckGo or Bing engine, or (3) slowing down via Settings limits."
+    )
+
+
 class GoogleEngine(SearchEngine):
     """Scrapes Google SERP HTML.
 
@@ -42,12 +50,18 @@ class GoogleEngine(SearchEngine):
         session: Optional[requests.Session] = None,
         timeout: float = 15.0,
         proxies: Optional["ProxyPool"] = None,
+        max_retries: int = 3,
+        backoff_base: float = 2.0,
+        backoff_max: float = 30.0,
     ) -> None:
         self.limiter = limiter or default_limiter()
         self.session = session or requests.Session()
         self.session.headers.update({"Accept-Language": "en-US,en;q=0.9"})
         self.timeout = timeout
         self.proxies = proxies
+        self.max_retries = max_retries
+        self.backoff_base = backoff_base
+        self.backoff_max = backoff_max
 
     def _headers(self) -> dict:
         return {"User-Agent": random.choice(USER_AGENTS)}
@@ -65,26 +79,48 @@ class GoogleEngine(SearchEngine):
             "num": per_page,
             "hl": "en",
         }
-        proxy = self._request_proxies()
-        try:
-            resp = self.session.get(
-                "https://www.google.com/search",
-                params=params,
-                headers=self._headers(),
-                timeout=self.timeout,
-                proxies=proxy,
-            )
-        except requests.RequestException:
-            if self.proxies:
-                self.proxies.mark_failed(proxy)
-            raise
-        if resp.status_code == 429:
-            raise RateLimitedError(f"HTTP 429 from Google: {query!r}")
-        if resp.status_code in (403, 503) or "unusual traffic" in resp.text.lower():
-            raise BlockedError("Google served a CAPTCHA / bot-check page")
-        if resp.status_code != 200:
-            resp.raise_for_status()
-        return resp.text
+        for attempt in range(self.max_retries + 1):
+            proxy = self._request_proxies()
+            try:
+                resp = self.session.get(
+                    "https://www.google.com/search",
+                    params=params,
+                    headers=self._headers(),
+                    timeout=self.timeout,
+                    proxies=proxy,
+                )
+            except requests.RequestException:
+                if self.proxies:
+                    self.proxies.mark_failed(proxy)
+                if attempt < self.max_retries:
+                    self._sleep_backoff(attempt, retry_after=None)
+                    continue
+                raise
+            if resp.status_code == 429:
+                if attempt < self.max_retries:
+                    retry_after = resp.headers.get("Retry-After")
+                    self._sleep_backoff(attempt, retry_after)
+                    continue
+                raise RateLimitedError(_google_429_message(query))
+            if resp.status_code in (403, 503) or "unusual traffic" in resp.text.lower():
+                raise BlockedError("Google served a CAPTCHA / bot-check page")
+            if resp.status_code != 200:
+                resp.raise_for_status()
+            return resp.text
+        raise RateLimitedError(_google_429_message(query))
+
+    def _sleep_backoff(self, attempt: int, retry_after: Optional[str]) -> None:
+        """Sleep before the next retry, honoring Retry-After when provided."""
+        if retry_after:
+            try:
+                delay = min(max(float(retry_after), 0.5), self.backoff_max)
+                time.sleep(delay)
+                return
+            except ValueError:
+                pass
+        delay = min(self.backoff_base * (2 ** attempt), self.backoff_max)
+        delay *= random.uniform(0.8, 1.2)  # jitter
+        time.sleep(delay)
 
     def _parse(self, html: str, query: str, position_offset: int = 0) -> List[SearchResult]:
         soup = BeautifulSoup(html, "html.parser")
