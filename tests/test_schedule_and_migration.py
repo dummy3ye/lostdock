@@ -75,3 +75,23 @@ def test_update_crawl(tmp_path):
     assert r["http_title"] == "Live Page"
     assert r["content_type"] == "text/html"
     repo.close()
+
+
+def test_update_crawl_by_url(tmp_path):
+    from lostdock.core.models import SearchResult
+
+    repo = Repository(tmp_path / "c2.db")
+    job = repo.create_job("q", "google")
+    repo.add_results(job, [
+        SearchResult(title="t", url="https://y.example", snippet="s", position=1),
+        SearchResult(title="t2", url="https://y.example", snippet="s", position=2),
+    ])
+    repo.update_crawl_by_url("https://y.example", 404, "Gone", "text/html")
+    with repo._lock:
+        rows = repo._conn.execute(
+            "SELECT status_code, http_title FROM results WHERE url=?", ("https://y.example",)
+        ).fetchall()
+    assert len(rows) == 2
+    assert all(r["status_code"] == 404 for r in rows)
+    assert rows[0]["http_title"] == "Gone"
+    repo.close()

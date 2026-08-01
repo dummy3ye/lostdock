@@ -242,6 +242,17 @@ class Repository:
             )
             self._conn.commit()
 
+    def update_crawl_by_url(self, url: str, status_code, http_title: str, content_type: str) -> None:
+        """Update crawl info for every stored result matching a URL."""
+        with self._lock:
+            self._conn.execute(
+                """UPDATE results
+                   SET status_code = ?, http_title = ?, content_type = ?, checked_at = datetime('now')
+                   WHERE url = ?""",
+                (status_code, http_title, content_type, url),
+            )
+            self._conn.commit()
+
     # ----- schedules -----
     def save_schedule(self, dork_name: str, interval_minutes: int, engine: str) -> None:
         import datetime

@@ -31,7 +31,7 @@ from ..services.scheduler import Scheduler
 from .dork_builder import DorkBuilder
 from .results_view import ResultsView
 from .settings import SettingsDialog
-from .worker import SearchWorker, run_search
+from .worker import CrawlWorker, SearchWorker, run_crawl, run_search
 
 
 class MainWindow(QMainWindow):
@@ -40,6 +40,7 @@ class MainWindow(QMainWindow):
         self.repo = repo
         self.db_path = db_path
         self.worker: Optional[SearchWorker] = None
+        self.crawl_worker: Optional[CrawlWorker] = None
         self.proxy_pool: Optional[ProxyPool] = None
         self.scheduler = Scheduler(repo, on_run=self._on_scheduled_run, on_error=self._on_scheduled_error)
         self._build_ui()
@@ -204,19 +205,29 @@ class MainWindow(QMainWindow):
                 )
 
     def _on_recrawl(self) -> None:
-        """Fetch each shown URL and annotate status in the results grid."""
+        """Fetch each shown URL off the UI thread and annotate status."""
         results = self.results.results()
         if not results:
             return
-        from ..services.crawler import crawl_url
-
+        urls = [r.url for r in results]
+        self.recrawl_btn.setEnabled(False)
         self.statusBar().showMessage("Re-checking URLs...")
-        app = QApplication.instance()
-        for result in results:
-            report = crawl_url(result.url)
-            self.results.annotate_url(result.url, report)
-            app.processEvents()
-        self.statusBar().showMessage("URL re-check complete")
+        self.crawl_worker = run_crawl(urls, repo=self.repo, persist=True)
+        self.crawl_worker.report_ready.connect(self._on_crawl_report)
+        self.crawl_worker.finished.connect(self._on_crawl_finished)
+        self.crawl_worker.failed.connect(self._on_crawl_failed)
+
+    def _on_crawl_report(self, report) -> None:
+        self.results.annotate_url(report.url, report)
+
+    def _on_crawl_finished(self, total: int) -> None:
+        self.recrawl_btn.setEnabled(True)
+        self.statusBar().showMessage(f"URL re-check complete — {total} URLs")
+
+    def _on_crawl_failed(self, message: str) -> None:
+        self.recrawl_btn.setEnabled(True)
+        self.statusBar().showMessage("URL re-check failed")
+        QMessageBox.critical(self, "Re-check failed", message)
 
     def _on_scheduled_run(self, name: str, count: int) -> None:
         self.statusBar().showMessage(f"Scheduled run '{name}' finished: {count} results")
