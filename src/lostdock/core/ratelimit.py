@@ -44,11 +44,9 @@ class RateLimiter:
                     break
                 wait = (1.0 - self._tokens) / self.rate
             time.sleep(wait)
-            # Optional jitter delay after acquiring.
             if self.jitter > 0:
                 time.sleep(random.uniform(0, self.jitter))
 
 
 def default_limiter() -> RateLimiter:
-    # ~20 queries/min bursty with jitter: polite default.
     return RateLimiter(capacity=5, rate=1.0 / 3.0, jitter=0.4)

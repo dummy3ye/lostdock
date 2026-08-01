@@ -63,7 +63,6 @@ class ProxyPool:
             ]
             if not candidates:
                 return None
-            # Rotate: pop the front, push to back for round-robin feel.
             idx, proxy = candidates[0]
             if len(candidates) > 1:
                 self._proxies.append(self._proxies.pop(idx))

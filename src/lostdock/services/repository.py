@@ -74,7 +74,7 @@ class Repository:
         self._conn.commit()
 
     def _migrate(self) -> None:
-        """Add columns for older databases created before Phase 3."""
+        """Add columns that older databases may be missing."""
         existing = {row["name"] for row in self._conn.execute("PRAGMA table_info(results)")}
         for statement in MIGRATIONS:
             column = statement.split()[-2]

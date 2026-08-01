@@ -60,7 +60,6 @@ class SettingsDialog(QDialog):
         layout.addWidget(buttons)
 
     def _load(self) -> None:
-        # Load saved dorks into schedule list
         for row in self.repo.list_dorks():
             self.schedule_dork_combo.addItem(row["name"])
 
