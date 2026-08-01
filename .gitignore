@@ -55,3 +55,4 @@ Thumbs.db
 # Local overrides
 .env
 .env.local
+/local/
