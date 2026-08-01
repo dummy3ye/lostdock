@@ -21,6 +21,7 @@ class CrawlReport:
     size: int
     ok: bool
     error: str = ""
+    original_url: str = ""
 
 
 def crawl_url(
@@ -49,10 +50,11 @@ def crawl_url(
             content_type=content_type,
             size=len(resp.content),
             ok=200 <= resp.status_code < 400,
+            original_url=url,
         )
     except requests.RequestException as exc:
         log.debug("crawl failed %s: %s", url, exc)
-        return CrawlReport(url=url, status_code=None, http_title="", content_type="", size=0, ok=False, error=str(exc))
+        return CrawlReport(url=url, status_code=None, http_title="", content_type="", size=0, ok=False, error=str(exc), original_url=url)
 
 
 def crawl_many(

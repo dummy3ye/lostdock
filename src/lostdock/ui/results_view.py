@@ -22,7 +22,7 @@ class ResultsView(QTableWidget):
 
     count_changed = Signal(int)
 
-    COLUMNS = ["#", "Title", "URL", "Snippet", "Engine"]
+    COLUMNS = ["#", "Title", "URL", "Snippet", "Engine", "Status"]
 
     def __init__(self, parent=None) -> None:
         super().__init__(0, len(self.COLUMNS), parent)
@@ -38,6 +38,7 @@ class ResultsView(QTableWidget):
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         header.setStretchLastSection(False)
         self.setColumnWidth(2, 320)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         self._highlight: Optional[re.Pattern] = None
 
     def set_highlight(self, pattern: Optional[str]) -> None:
@@ -79,6 +80,7 @@ class ResultsView(QTableWidget):
             result.url,
             result.snippet,
             result.engine,
+            "",
         ]
         for col, value in enumerate(values):
             item = QTableWidgetItem(value)
@@ -112,7 +114,12 @@ class ResultsView(QTableWidget):
         return None
 
     def annotate_url(self, url: str, report) -> None:
-        """Update the status column with crawl info for a matching URL."""
+        """Update the Status column for the row matching the stored URL.
+
+        Matching uses the original requested URL (report.original_url), so a
+        result that redirected is still annotated even though report.url is the
+        final, different URL.
+        """
         for row in range(self.rowCount()):
             url_item = self.item(row, 2)
             if url_item and (url_item.data(Qt.UserRole) or url_item.text()) == url:
@@ -121,11 +128,11 @@ class ResultsView(QTableWidget):
                     if report.status_code
                     else f"ERR {report.error[:20]}"
                 )
+                self.item(row, 5).setText(status)
                 if report.http_title:
                     title = self.item(row, 1)
                     if title:
                         title.setText(report.http_title)
-                self.item(row, 3).setText(f"{self.item(row, 3).text()}  [{status}]")
                 break
 
     def copy_selected_url(self) -> None:

@@ -218,7 +218,8 @@ class MainWindow(QMainWindow):
         self.crawl_worker.failed.connect(self._on_crawl_failed)
 
     def _on_crawl_report(self, report) -> None:
-        self.results.annotate_url(report.url, report)
+        match_url = report.original_url or report.url
+        self.results.annotate_url(match_url, report)
 
     def _on_crawl_finished(self, total: int) -> None:
         self.recrawl_btn.setEnabled(True)
