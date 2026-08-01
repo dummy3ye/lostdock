@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
 
 from PySide6.QtCore import QObject, QThread, Signal
 
 from ..adapters import SearchEngine
 from ..core.models import Dork, SearchResult
 from ..core.compiler import compile_dork
+from ..services.plugins import Plugin
 from ..services.repository import Repository
 
 
@@ -27,6 +28,7 @@ class SearchWorker(QObject):
         dork: Dork,
         pages: int = 1,
         stop_at: Optional[int] = None,
+        plugins: Optional[List[Plugin]] = None,
     ) -> None:
         super().__init__()
         self.engine = engine
@@ -34,6 +36,7 @@ class SearchWorker(QObject):
         self.dork = dork
         self.pages = pages
         self.stop_at = stop_at
+        self.plugins = plugins or []
         self._cancelled = False
 
     def cancel(self) -> None:
@@ -50,6 +53,12 @@ class SearchWorker(QObject):
             ):
                 if self._cancelled:
                     break
+                for plugin in self.plugins:
+                    result = plugin.call("on_result", result)
+                    if result is None:
+                        break
+                if result is None:
+                    continue
                 self.repo.add_result(job_id, result)
                 self.result_ready.emit(result)
                 total += 1
@@ -69,6 +78,7 @@ def run_search(
     dork: Dork,
     pages: int = 1,
     stop_at: Optional[int] = None,
+    plugins: Optional[List[Plugin]] = None,
 ) -> SearchWorker:
     """Start a search in a new QThread; returns the worker.
 
@@ -76,7 +86,7 @@ def run_search(
     The returned QThread is owned by the worker object.
     """
     thread = QThread()
-    worker = SearchWorker(engine, repo, dork, pages=pages, stop_at=stop_at)
+    worker = SearchWorker(engine, repo, dork, pages=pages, stop_at=stop_at, plugins=plugins)
     worker.moveToThread(thread)
     thread.started.connect(worker.run)
     worker.finished.connect(thread.quit)

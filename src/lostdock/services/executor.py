@@ -8,6 +8,7 @@ from typing import Callable, List, Optional
 from ..adapters import SearchEngine
 from ..core.compiler import compile_dork
 from ..core.models import Dork, SearchResult
+from ..services.plugins import Plugin
 from ..services.repository import Repository
 
 log = logging.getLogger(__name__)
@@ -30,12 +31,20 @@ class Executor:
         stop_at: Optional[int] = None,
         on_result: Optional[OnResult] = None,
         on_error: Optional[OnError] = None,
+        plugins: Optional[List[Plugin]] = None,
     ) -> List[SearchResult]:
+        plugins = plugins or []
         query = compile_dork(dork)
         job_id = self.repo.create_job(query, self.engine.name)
         collected: List[SearchResult] = []
         try:
             for result in self.engine.search(query, pages=pages, stop_at=stop_at):
+                for plugin in plugins:
+                    result = plugin.call("on_result", result)
+                    if result is None:
+                        break
+                if result is None:
+                    continue
                 collected.append(result)
                 self.repo.add_result(job_id, result)
                 if on_result:

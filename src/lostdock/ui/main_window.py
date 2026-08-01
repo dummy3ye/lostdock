@@ -239,11 +239,13 @@ class MainWindow(QMainWindow):
         engine = engine_cls(proxies=self.proxy_pool)
         self.results.setRowCount(0)
         self.results.count_changed.emit(0)
+        plugins = getattr(QApplication.instance(), "plugins", [])
         self.worker = run_search(
             engine,
             self.repo,
             dork,
             pages=self.pages_spin.value(),
+            plugins=plugins,
         )
         self.worker.result_ready.connect(self._on_result)
         self.worker.finished.connect(self._on_finished)
@@ -285,6 +287,9 @@ class MainWindow(QMainWindow):
         if not path:
             return
         fmt = Path(path).suffix.lstrip(".")
+        plugins = getattr(QApplication.instance(), "plugins", [])
+        for plugin in plugins:
+            results = plugin.call("on_export", results, fmt, path) or results
         try:
             export_results(results, path, fmt)
             self.statusBar().showMessage(f"Exported {len(results)} results to {path}")
