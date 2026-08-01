@@ -1,0 +1,89 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: lostdock-linux
+          - os: windows-latest
+            artifact: lostdock-windows
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          uv venv
+          uv pip install -e ".[dev]" pyinstaller
+
+      - name: Run tests
+        run: uv run pytest -q
+
+      - name: Build binary
+        run: uv run pyinstaller lostdock.spec -y
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/lostdock/
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: lostdock-linux
+          path: linux/
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: lostdock-windows
+          path: windows/
+
+      - name: Package archives
+        run: |
+          tar -czf lostdock-linux.tar.gz -C linux .
+          (cd windows && zip -r ../lostdock-windows.zip .)
+          ls -lh lostdock-linux.tar.gz lostdock-windows.zip
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA_SHORT="${GITHUB_SHA::7}"
+          TAG="v0.1.0-${SHA_SHORT}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, skipping"
+          else
+            gh release create "$TAG" \
+              --title "Build ${SHA_SHORT}" \
+              --notes "Automated build from commit \`${GITHUB_SHA}\`.
+
+              - Linux binary: \`lostdock-linux.tar.gz\`
+              - Windows binary: \`lostdock-windows.zip\`" \
+              lostdock-linux.tar.gz lostdock-windows.zip
+          fi
