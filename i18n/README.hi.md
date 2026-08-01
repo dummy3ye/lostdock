@@ -6,7 +6,7 @@
 और एक प्लगइन सिस्टम प्रदान करता है — सब कुछ एक नेटिव PySide6 (Qt) UI में जो **Windows, macOS और Linux**
 पर चलता है।
 
-> पूर्ण दस्तावेज़: [README.md](README.md)
+> पूर्ण दस्तावेज़: [README.md](../README.md)
 
 ---
 

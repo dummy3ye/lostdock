@@ -6,7 +6,7 @@ esecuzione multi-motore con limitazione di velocità e rotazione dei proxy, arch
 risultati, riverifica delle URL, dork programmati, evidenziazione regex e un sistema di plugin — il tutto
 in un'interfaccia nativa PySide6 (Qt) che funziona su **Windows, macOS e Linux**.
 
-> Documentazione completa: [README.md](README.md)
+> Documentazione completa: [README.md](../README.md)
 
 ---
 

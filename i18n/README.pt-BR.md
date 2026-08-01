@@ -6,7 +6,7 @@ execução multi-motor com limitação de taxa e rotação de proxies, armazenam
 reverificação de URLs, dorks agendados, destaque por regex e um sistema de plugins — tudo em uma interface
 nativa PySide6 (Qt) que roda em **Windows, macOS e Linux**.
 
-> Documentação completa: [README.md](README.md)
+> Documentação completa: [README.md](../README.md)
 
 ---
 

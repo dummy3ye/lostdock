@@ -5,7 +5,7 @@
 실행, 결과 영구 저장, URL 재확인, 정기 도크, 정규식 하이라이트, 플러그인 시스템을 갖추고 있으며
 **Windows, macOS, Linux**에서 실행되는 네이티브 PySide6(Qt) UI를 사용합니다.
 
-> 전체 문서: [README.md](README.md)
+> 전체 문서: [README.md](../README.md)
 
 ---
 

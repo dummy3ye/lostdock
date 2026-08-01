@@ -10,7 +10,7 @@ with rate limiting and proxy rotation, persistent result storage, live URL re-ch
 recurring scheduled dorks, regex highlighting, and a plugin system — all in a native PySide6 (Qt) UI
 that runs on **Windows, macOS, and Linux**.
 
-> **Read this README in:** [中文](README.zh-CN.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [हिन्दी](README.hi.md) · [Português](README.pt-BR.md) · [Русский](README.ru.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Italiano](README.it.md) · [العربية](README.ar.md)
+> **Read this README in:** [中文](README.zh-CN.md) · [Español](i18n/README.es.md) · [Français](i18n/README.fr.md) · [Deutsch](i18n/README.de.md) · [हिन्दी](i18n/README.hi.md) · [Português](i18n/README.pt-BR.md) · [Русский](i18n/README.ru.md) · [日本語](README.ja.md) · [한국어](i18n/README.ko.md) · [Italiano](i18n/README.it.md) · [العربية](i18n/README.ar.md)
 
 ---
 

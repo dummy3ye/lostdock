@@ -6,7 +6,7 @@
 وتمييزًا بالتعبيرات النمطية (regex)، ونظام إضافات (plugins) — كل ذلك في واجهة PySide6 (Qt) أصلية
 تعمل على **Windows وmacOS وLinux**.
 
-> الوثائق الكاملة: [README.md](README.md)
+> الوثائق الكاملة: [README.md](../README.md)
 
 ---
 

@@ -7,7 +7,7 @@ persistant des résultats, une revérification d'URL en direct, des dorks planif
 et un système de plugins — le tout dans une interface native PySide6 (Qt) fonctionnant sur
 **Windows, macOS et Linux**.
 
-> Documentation complète dans [README.md](README.md)
+> Documentation complète dans [README.md](../README.md)
 
 ---
 

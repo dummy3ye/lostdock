@@ -6,7 +6,7 @@ Multi-Engine-Ausführung mit Ratenbegrenzung und Proxy-Rotation, persistente Erg
 Live-URL-Überprüfung, geplante Dorks, Regex-Hervorhebung und ein Plugin-System — alles in einer
 nativen PySide6- (Qt-) Oberfläche für **Windows, macOS und Linux**.
 
-> Vollständige Dokumentation: [README.md](README.md)
+> Vollständige Dokumentation: [README.md](../README.md)
 
 ---
 
