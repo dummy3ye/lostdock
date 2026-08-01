@@ -1,6 +1,6 @@
 """LostDock — cross-platform Google dorking tool."""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from .core.models import Dork, SearchResult
 from .core.compiler import compile_dork
