@@ -1,0 +1,294 @@
+"""Main application window."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Optional
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QSpinBox,
+    QSplitter,
+    QStatusBar,
+    QVBoxLayout,
+    QWidget,
+)
+
+from ..adapters import ENGINES
+from ..core.models import SearchResult
+from ..core.proxy import ProxyPool
+from ..services.exporter import export_results
+from ..services.repository import Repository
+from ..services.scheduler import Scheduler
+from .dork_builder import DorkBuilder
+from .results_view import ResultsView
+from .settings import SettingsDialog
+from .worker import SearchWorker, run_search
+
+
+class MainWindow(QMainWindow):
+    def __init__(self, repo: Repository, db_path: Path) -> None:
+        super().__init__()
+        self.repo = repo
+        self.db_path = db_path
+        self.worker: Optional[SearchWorker] = None
+        self.proxy_pool: Optional[ProxyPool] = None
+        self.scheduler = Scheduler(repo, on_run=self._on_scheduled_run, on_error=self._on_scheduled_error)
+        self._build_ui()
+        self.scheduler.start()
+        self.setWindowTitle("LostDock — Google Dorking")
+        self.resize(1180, 760)
+
+    def closeEvent(self, event) -> None:
+        self.scheduler.stop()
+        super().closeEvent(event)
+
+    def _build_ui(self) -> None:
+        self.builder = DorkBuilder()
+        self.builder.changed.connect(self._on_preview_changed)
+        self.builder.highlight_field.textChanged.connect(self._on_highlight_changed)
+
+        self.results = ResultsView()
+
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.addWidget(self.builder)
+        splitter.addWidget(self.results)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([380, 800])
+        self.setCentralWidget(splitter)
+
+        self._build_toolbar()
+        self._build_menu()
+        self._build_status()
+        self._refresh_saved_dorks()
+
+    def _build_toolbar(self) -> None:
+        bar = QWidget()
+        layout = QHBoxLayout(bar)
+        layout.setContentsMargins(8, 6, 8, 6)
+
+        layout.addWidget(QLabel("Engine"))
+        self.engine_combo = QComboBox()
+        for name in ENGINES:
+            self.engine_combo.addItem(name, name)
+        layout.addWidget(self.engine_combo)
+
+        layout.addWidget(QLabel("Pages"))
+        self.pages_spin = QSpinBox()
+        self.pages_spin.setRange(1, 20)
+        self.pages_spin.setValue(1)
+        layout.addWidget(self.pages_spin)
+
+        self.run_btn = QPushButton("Run Search")
+        self.run_btn.setDefault(True)
+        self.run_btn.clicked.connect(self._on_run)
+        layout.addWidget(self.run_btn)
+
+        self.cancel_btn = QPushButton("Cancel")
+        self.cancel_btn.setEnabled(False)
+        self.cancel_btn.clicked.connect(self._on_cancel)
+        layout.addWidget(self.cancel_btn)
+
+        layout.addWidget(QLabel("Saved"))
+        self.saved_combo = QComboBox()
+        self.saved_combo.setMinimumWidth(140)
+        layout.addWidget(self.saved_combo)
+        self.save_btn = QPushButton("Save")
+        self.save_btn.clicked.connect(self._on_save_dork)
+        layout.addWidget(self.save_btn)
+        self.load_btn = QPushButton("Load")
+        self.load_btn.clicked.connect(self._on_load_dork)
+        layout.addWidget(self.load_btn)
+        self.delete_btn = QPushButton("Delete")
+        self.delete_btn.clicked.connect(self._on_delete_dork)
+        layout.addWidget(self.delete_btn)
+
+        self.recrawl_btn = QPushButton("Re-check URLs")
+        self.recrawl_btn.clicked.connect(self._on_recrawl)
+        layout.addWidget(self.recrawl_btn)
+
+        layout.addStretch()
+
+        self.export_btn = QPushButton("Export...")
+        self.export_btn.clicked.connect(self._on_export)
+        layout.addWidget(self.export_btn)
+
+        container = QWidget()
+        vbox = QVBoxLayout(container)
+        vbox.setContentsMargins(0, 0, 0, 0)
+        vbox.addWidget(bar)
+        self.setMenuWidget(container)
+
+    def _build_menu(self) -> None:
+        menu = self.menuBar()
+        file_menu = menu.addMenu("&File")
+        file_menu.addAction("Export Results...", self._on_export)
+        file_menu.addSeparator()
+        file_menu.addAction("&Quit", self.close)
+        tools_menu = menu.addMenu("&Tools")
+        tools_menu.addAction("Settings...", self._on_settings)
+        tools_menu.addAction("Re-check URLs", self._on_recrawl)
+
+    def _build_status(self) -> None:
+        status = QStatusBar()
+        self.setStatusBar(status)
+        self.count_label = QLabel("0 results")
+        status.addPermanentWidget(self.count_label)
+        self.results.count_changed.connect(
+            lambda n: self.count_label.setText(f"{n} results")
+        )
+        status.showMessage("Ready")
+
+    def _filter(self):
+        from ..services.filter import ResultFilter
+
+        whitelist = self.builder.whitelist_field.text()
+        blacklist = self.builder.blacklist_field.text()
+        patterns = self.builder.patterns_field.text()
+        return ResultFilter(
+            whitelist=[d.strip() for d in whitelist.split(",") if d.strip()],
+            blacklist=[d.strip() for d in blacklist.split(",") if d.strip()],
+            url_patterns=[p.strip() for p in patterns.split(",") if p.strip()],
+        )
+
+    def _refresh_saved_dorks(self) -> None:
+        self.saved_combo.clear()
+        for row in self.repo.list_dorks():
+            self.saved_combo.addItem(row["name"])
+
+    def _on_save_dork(self) -> None:
+        name = self.builder.name.text().strip()
+        if not name:
+            QMessageBox.warning(self, "Save dork", "Enter a name in the 'Dork name' field.")
+            return
+        self.repo.save_dork(name, self.builder.dork())
+        self._refresh_saved_dorks()
+        self.saved_combo.setCurrentText(name)
+        self.statusBar().showMessage(f"Saved dork '{name}'")
+
+    def _on_load_dork(self) -> None:
+        name = self.saved_combo.currentText()
+        if not name:
+            return
+        dork = self.repo.load_dork(name)
+        if dork:
+            self.builder.load_dork(dork)
+            self.statusBar().showMessage(f"Loaded dork '{name}'")
+
+    def _on_delete_dork(self) -> None:
+        name = self.saved_combo.currentText()
+        if not name:
+            return
+        self.repo.delete_dork(name)
+        self._refresh_saved_dorks()
+        self.statusBar().showMessage(f"Deleted dork '{name}'")
+
+    def _on_settings(self) -> None:
+        dialog = SettingsDialog(self.repo, self)
+        if dialog.exec():
+            proxies = dialog.proxy_list()
+            self.proxy_pool = ProxyPool.from_strings(proxies) if proxies else None
+            choice = dialog.schedule_choice()
+            if choice:
+                name, interval = choice
+                self.repo.save_schedule(name, interval, "duckduckgo")
+                self.statusBar().showMessage(
+                    f"Scheduled '{name}' every {interval} min"
+                )
+
+    def _on_recrawl(self) -> None:
+        """Fetch each shown URL and annotate status in the results grid."""
+        results = self.results.results()
+        if not results:
+            return
+        from ..services.crawler import crawl_url
+
+        self.statusBar().showMessage("Re-checking URLs...")
+        app = QApplication.instance()
+        for result in results:
+            report = crawl_url(result.url)
+            self.results.annotate_url(result.url, report)
+            app.processEvents()
+        self.statusBar().showMessage("URL re-check complete")
+
+    def _on_scheduled_run(self, name: str, count: int) -> None:
+        self.statusBar().showMessage(f"Scheduled run '{name}' finished: {count} results")
+
+    def _on_scheduled_error(self, name: str, message: str) -> None:
+        self.statusBar().showMessage(f"Scheduled run '{name}' failed: {message}")
+
+    def _on_preview_changed(self, query: str) -> None:
+        self.builder.preview.setText(query or "(empty query)")
+
+    def _on_highlight_changed(self, pattern: str) -> None:
+        self.results.set_highlight(pattern or None)
+
+    def _on_run(self) -> None:
+        dork = self.builder.dork()
+        if not self.builder.compiled_query():
+            QMessageBox.warning(self, "Empty query", "Build a query first.")
+            return
+        engine_cls = ENGINES[self.engine_combo.currentData()]
+        engine = engine_cls(proxies=self.proxy_pool)
+        self.results.setRowCount(0)
+        self.results.count_changed.emit(0)
+        self.worker = run_search(
+            engine,
+            self.repo,
+            dork,
+            pages=self.pages_spin.value(),
+        )
+        self.worker.result_ready.connect(self._on_result)
+        self.worker.finished.connect(self._on_finished)
+        self.worker.failed.connect(self._on_failed)
+        self.run_btn.setEnabled(False)
+        self.cancel_btn.setEnabled(True)
+        self.statusBar().showMessage("Searching...")
+
+    def _on_cancel(self) -> None:
+        if self.worker:
+            self.worker.cancel()
+            self.statusBar().showMessage("Cancelling...")
+
+    def _on_result(self, result: SearchResult) -> None:
+        self.results.add_result(result)
+
+    def _on_finished(self, total: int) -> None:
+        self.run_btn.setEnabled(True)
+        self.cancel_btn.setEnabled(False)
+        self.statusBar().showMessage(f"Done — {total} results (dedup applied)")
+
+    def _on_failed(self, message: str) -> None:
+        self.run_btn.setEnabled(True)
+        self.cancel_btn.setEnabled(False)
+        self.statusBar().showMessage("Search failed")
+        QMessageBox.critical(self, "Search failed", message)
+
+    def _on_export(self) -> None:
+        results = self._filter().apply(self.results.results())
+        if not results:
+            QMessageBox.information(self, "Export", "No results to export.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export results",
+            "lostdock_results.json",
+            "JSON (*.json);;CSV (*.csv);;Markdown (*.md);;HTML report (*.html)",
+        )
+        if not path:
+            return
+        fmt = Path(path).suffix.lstrip(".")
+        try:
+            export_results(results, path, fmt)
+            self.statusBar().showMessage(f"Exported {len(results)} results to {path}")
+        except ValueError as exc:
+            QMessageBox.warning(self, "Export", str(exc))
