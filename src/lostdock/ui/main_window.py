@@ -10,15 +10,15 @@ from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
     QFileDialog,
-    QHBoxLayout,
     QLabel,
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QSpinBox,
     QSplitter,
     QStatusBar,
-    QVBoxLayout,
+    QToolBar,
     QWidget,
 )
 
@@ -72,61 +72,59 @@ class MainWindow(QMainWindow):
         self._refresh_saved_dorks()
 
     def _build_toolbar(self) -> None:
-        bar = QWidget()
-        layout = QHBoxLayout(bar)
-        layout.setContentsMargins(8, 6, 8, 6)
+        self.toolbar = QToolBar("Search")
+        self.toolbar.setMovable(False)
+        self.addToolBar(self.toolbar)
 
-        layout.addWidget(QLabel("Engine"))
+        self.toolbar.addWidget(QLabel("Engine"))
         self.engine_combo = QComboBox()
         for name in ENGINES:
             self.engine_combo.addItem(name, name)
-        layout.addWidget(self.engine_combo)
+        self.toolbar.addWidget(self.engine_combo)
 
-        layout.addWidget(QLabel("Pages"))
+        self.toolbar.addWidget(QLabel("Pages"))
         self.pages_spin = QSpinBox()
         self.pages_spin.setRange(1, 20)
         self.pages_spin.setValue(1)
-        layout.addWidget(self.pages_spin)
+        self.toolbar.addWidget(self.pages_spin)
 
         self.run_btn = QPushButton("Run Search")
         self.run_btn.setDefault(True)
         self.run_btn.clicked.connect(self._on_run)
-        layout.addWidget(self.run_btn)
+        self.toolbar.addWidget(self.run_btn)
 
         self.cancel_btn = QPushButton("Cancel")
         self.cancel_btn.setEnabled(False)
         self.cancel_btn.clicked.connect(self._on_cancel)
-        layout.addWidget(self.cancel_btn)
+        self.toolbar.addWidget(self.cancel_btn)
 
-        layout.addWidget(QLabel("Saved"))
+        self.toolbar.addSeparator()
+
+        self.toolbar.addWidget(QLabel("Saved"))
         self.saved_combo = QComboBox()
         self.saved_combo.setMinimumWidth(140)
-        layout.addWidget(self.saved_combo)
+        self.toolbar.addWidget(self.saved_combo)
         self.save_btn = QPushButton("Save")
         self.save_btn.clicked.connect(self._on_save_dork)
-        layout.addWidget(self.save_btn)
+        self.toolbar.addWidget(self.save_btn)
         self.load_btn = QPushButton("Load")
         self.load_btn.clicked.connect(self._on_load_dork)
-        layout.addWidget(self.load_btn)
+        self.toolbar.addWidget(self.load_btn)
         self.delete_btn = QPushButton("Delete")
         self.delete_btn.clicked.connect(self._on_delete_dork)
-        layout.addWidget(self.delete_btn)
+        self.toolbar.addWidget(self.delete_btn)
 
         self.recrawl_btn = QPushButton("Re-check URLs")
         self.recrawl_btn.clicked.connect(self._on_recrawl)
-        layout.addWidget(self.recrawl_btn)
+        self.toolbar.addWidget(self.recrawl_btn)
 
-        layout.addStretch()
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.toolbar.addWidget(spacer)
 
         self.export_btn = QPushButton("Export...")
         self.export_btn.clicked.connect(self._on_export)
-        layout.addWidget(self.export_btn)
-
-        container = QWidget()
-        vbox = QVBoxLayout(container)
-        vbox.setContentsMargins(0, 0, 0, 0)
-        vbox.addWidget(bar)
-        self.setMenuWidget(container)
+        self.toolbar.addWidget(self.export_btn)
 
     def _build_menu(self) -> None:
         menu = self.menuBar()

@@ -1,9 +1,20 @@
 # AGENTS.md
 
+## Issue-Driven Workflow
+
+Before doing any work, follow this rule:
+
+1. If the task is listed as an issue in `local/plan.md` OR the user asks you to fix something that IS an issue, create a GitHub issue for it (`gh issue create`) if one does not already exist.
+2. Complete the fix.
+3. Verify your work (tests / UI smoke check).
+4. Commit with a conventional commit message referencing the issue.
+5. Close the issue (`gh issue close`).
+
 ## Pushing to GitHub
 
-1. Commit with a conventional commit message (see below).
-2. Push to the remote:
+1. BEFORE EVERY PUSH ASK USER FOR CLARIFICALTION (y/N/edit)
+2. Commit with a conventional commit message (see below).
+3. Push to the remote:
 
 ```bash
 git add <files>
