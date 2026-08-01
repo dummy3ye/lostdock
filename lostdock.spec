@@ -9,6 +9,7 @@
 # For a single-file build, pass --onefile on the CLI instead.
 
 import os
+import sys
 
 from PyInstaller.utils.hooks import collect_data_files
 
