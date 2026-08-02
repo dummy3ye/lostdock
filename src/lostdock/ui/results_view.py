@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import re
-from typing import List, Optional
+from typing import ClassVar
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QHeaderView,
     QTableWidget,
     QTableWidgetItem,
-    QAbstractItemView,
 )
 
 from ..core.models import SearchResult
@@ -22,7 +22,7 @@ class ResultsView(QTableWidget):
 
     count_changed = Signal(int)
 
-    COLUMNS = ["#", "Title", "URL", "Snippet", "Engine", "Status"]
+    COLUMNS: ClassVar[list[str]] = ["#", "Title", "URL", "Snippet", "Engine", "Status"]
 
     def __init__(self, parent=None) -> None:
         super().__init__(0, len(self.COLUMNS), parent)
@@ -39,9 +39,9 @@ class ResultsView(QTableWidget):
         header.setStretchLastSection(False)
         self.setColumnWidth(2, 320)
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
-        self._highlight: Optional[re.Pattern] = None
+        self._highlight: re.Pattern | None = None
 
-    def set_highlight(self, pattern: Optional[str]) -> None:
+    def set_highlight(self, pattern: str | None) -> None:
         """Highlight rows whose URL/title/snippet match a regex pattern."""
         if pattern:
             try:
@@ -56,20 +56,14 @@ class ResultsView(QTableWidget):
     def _apply_highlight(self) -> None:
         for row in range(self.rowCount()):
             if self._highlight:
-                text = " ".join(
-                    self.item(row, c).text()
-                    for c in (1, 2, 3)
-                    if self.item(row, c)
-                )
+                text = " ".join(self.item(row, c).text() for c in (1, 2, 3) if self.item(row, c))
                 matched = bool(self._highlight.search(text))
             else:
                 matched = False
             for col in range(self.columnCount()):
                 item = self.item(row, col)
                 if item:
-                    item.setBackground(
-                        Qt.green if matched else Qt.white
-                    )
+                    item.setBackground(Qt.green if matched else Qt.white)
 
     def add_result(self, result: SearchResult) -> None:
         row = self.rowCount()
@@ -87,26 +81,30 @@ class ResultsView(QTableWidget):
             item.setToolTip(value)
             if col == 2:
                 item.setData(Qt.UserRole, result.url)
+            if col == 0:
+                item.setData(Qt.UserRole + 1, result.query)
             self.setItem(row, col, item)
         self._apply_highlight()
         self.count_changed.emit(row + 1)
 
-    def results(self) -> List[SearchResult]:
-        out: List[SearchResult] = []
+    def results(self) -> list[SearchResult]:
+        out: list[SearchResult] = []
         for row in range(self.rowCount()):
             url_item = self.item(row, 2)
+            pos_item = self.item(row, 0)
             out.append(
                 SearchResult(
                     title=self.item(row, 1).text() if self.item(row, 1) else "",
                     url=url_item.data(Qt.UserRole) or url_item.text() if url_item else "",
                     snippet=self.item(row, 3).text() if self.item(row, 3) else "",
                     engine=self.item(row, 4).text() if self.item(row, 4) else "",
-                    position=int(self.item(row, 0).text()) if self.item(row, 0) else 0,
+                    position=int(pos_item.text()) if pos_item else 0,
+                    query=pos_item.data(Qt.UserRole + 1) if pos_item else "",
                 )
             )
         return out
 
-    def selected_url(self) -> Optional[str]:
+    def selected_url(self) -> str | None:
         items = self.selectedItems()
         for it in items:
             if it.column() == 2:

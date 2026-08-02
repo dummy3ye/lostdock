@@ -19,9 +19,7 @@ def app():
 
 def _view(app):
     view = ResultsView()
-    view.add_result(
-        SearchResult(title="A", url="https://a.example", snippet="s", position=1)
-    )
+    view.add_result(SearchResult(title="A", url="https://a.example", snippet="s", position=1))
     return view
 
 
