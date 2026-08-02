@@ -12,7 +12,7 @@ import os
 import sys
 import tomllib
 
-from PyInstaller.utils.hooks import collect_data_files
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
 
@@ -30,42 +30,50 @@ if os.path.isdir(plugins_dir):
         for f in os.listdir(plugins_dir)
         if f.endswith(".py")
     ]
+# Playwright's node driver must ship alongside the app.
+datas += collect_data_files("playwright")
+hiddenimports = [
+    "lostdock.core",
+    "lostdock.core.models",
+    "lostdock.core.compiler",
+    "lostdock.core.operators",
+    "lostdock.core.ratelimit",
+    "lostdock.core.proxy",
+    "lostdock.adapters",
+    "lostdock.adapters.base",
+    "lostdock.adapters.google",
+    "lostdock.adapters.duckduckgo",
+    "lostdock.adapters.bing",
+    "lostdock.adapters.chrome",
+    "lostdock.adapters.browser",
+    "lostdock.services",
+    "lostdock.services.repository",
+    "lostdock.services.query",
+    "lostdock.services.filter",
+    "lostdock.services.crawler",
+    "lostdock.services.scheduler",
+    "lostdock.services.exporter",
+    "lostdock.services.plugins",
+    "lostdock.ui",
+    "lostdock.ui.main_window",
+    "lostdock.ui.dork_builder",
+    "lostdock.ui.results_view",
+    "lostdock.ui.settings",
+    "lostdock.ui.worker",
+    "bs4",
+    "requests",
+    "playwright",
+    "playwright._impl",
+    "playwright.sync_api",
+]
+hiddenimports += collect_submodules("playwright._impl")
 
 a = Analysis(
     ["src/lostdock/main.py"],
     pathex=["src"],
     binaries=[],
     datas=datas,
-    hiddenimports=[
-        "lostdock.core",
-        "lostdock.core.models",
-        "lostdock.core.compiler",
-        "lostdock.core.operators",
-        "lostdock.core.ratelimit",
-        "lostdock.core.proxy",
-        "lostdock.adapters",
-        "lostdock.adapters.base",
-        "lostdock.adapters.google",
-        "lostdock.adapters.duckduckgo",
-        "lostdock.adapters.bing",
-        "lostdock.adapters.chrome",
-        "lostdock.services",
-        "lostdock.services.repository",
-        "lostdock.services.query",
-        "lostdock.services.filter",
-        "lostdock.services.crawler",
-        "lostdock.services.scheduler",
-        "lostdock.services.exporter",
-        "lostdock.services.plugins",
-        "lostdock.ui",
-        "lostdock.ui.main_window",
-        "lostdock.ui.dork_builder",
-        "lostdock.ui.results_view",
-        "lostdock.ui.settings",
-        "lostdock.ui.worker",
-        "bs4",
-        "requests",
-    ],
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

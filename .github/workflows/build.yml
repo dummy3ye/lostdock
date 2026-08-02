@@ -30,6 +30,7 @@ jobs:
         run: |
           uv venv
           uv pip install -e ".[dev]"
+          uv run python -m playwright install chromium --with-deps
 
       - name: Lint
         run: |
@@ -70,6 +71,7 @@ jobs:
         run: |
           uv venv
           uv pip install -e ".[dev]" pyinstaller
+          uv run python -m playwright install chromium
 
       - name: Build binary
         run: uv run pyinstaller lostdock.spec -y

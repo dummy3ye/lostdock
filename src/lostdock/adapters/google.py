@@ -13,6 +13,7 @@ from ..core.models import SearchResult
 from ..core.proxy import ProxyPool
 from ..core.ratelimit import RateLimiter, default_limiter
 from .base import BlockedError, RateLimitedError, SearchEngine
+from .browser import BrowserRenderer, BrowserUnavailable
 
 log = logging.getLogger(__name__)
 
@@ -33,14 +34,21 @@ def _parse_google_serp(html: str, query: str, position_offset: int = 0) -> list[
 
     soup = BeautifulSoup(html, "html.parser")
     results: list[SearchResult] = []
+    seen_urls: set[str] = set()
 
     def organic_blocks():
-        blocks = soup.select("div.g")
-        if not blocks:
-            blocks = soup.select("div[data-hveid]")
-        return blocks
+        # Classic layout, udm=14 layout, then generic result containers.
+        # Merge all matched containers so mixed page structures don't lose results.
+        seen: set[int] = set()
+        merged = []
+        for selector in ("div.g", "div.MjjYud", "div[data-sncf]", "div[data-hveid]"):
+            for block in soup.select(selector):
+                if id(block) not in seen:
+                    seen.add(id(block))
+                    merged.append(block)
+        return merged
 
-    for i, block in enumerate(organic_blocks()):
+    for block in organic_blocks():
         a = block.find("a", href=True)
         if a is None:
             continue
@@ -60,11 +68,18 @@ def _parse_google_serp(html: str, query: str, position_offset: int = 0) -> list[
         if url.startswith(("javascript:", "data:")):
             continue
 
+        # Skip duplicate containers (e.g. wrapper + inner g both matching).
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+
         # Prefer the heading text as the title, falling back to the anchor.
         heading = block.find("h3")
         title = (heading.get_text(" ", strip=True) if heading else a.get_text(" ", strip=True))[
             :300
         ]
+        if not title:
+            continue
 
         snippet = block.get_text(" ", strip=True)[:400]
 
@@ -74,7 +89,7 @@ def _parse_google_serp(html: str, query: str, position_offset: int = 0) -> list[
                 url=url,
                 snippet=snippet,
                 engine="google",
-                position=position_offset + i + 1,
+                position=position_offset + len(results) + 1,
                 query=query,
             )
         )
@@ -93,6 +108,11 @@ def _google_429_message(query: str) -> str:
 class GoogleEngine(SearchEngine):
     """Scrapes Google SERP HTML.
 
+    Uses plain HTTP scraping first (fast, works from clean residential IPs).
+    If Google responds with a CAPTCHA / rate-limit block, falls back to
+    rendering the SERP in a real headless Chromium via Playwright, which defeats
+    behavioral bot-detection on most networks.
+
     NOTE: Google's ToS restrict automated access. This adapter exists for
     security research and is rate-limited by default. Prefer the Custom
     Search JSON API for production compliance.
@@ -109,6 +129,7 @@ class GoogleEngine(SearchEngine):
         max_retries: int = 3,
         backoff_base: float = 2.0,
         backoff_max: float = 30.0,
+        use_browser_fallback: bool = True,
     ) -> None:
         self.limiter = limiter or default_limiter()
         self.session = session or requests.Session()
@@ -118,6 +139,8 @@ class GoogleEngine(SearchEngine):
         self.max_retries = max_retries
         self.backoff_base = backoff_base
         self.backoff_max = backoff_max
+        self.use_browser_fallback = use_browser_fallback
+        self._renderer: BrowserRenderer | None = None
 
     def _headers(self) -> dict:
         return {"User-Agent": random.choice(USER_AGENTS)}
@@ -127,13 +150,31 @@ class GoogleEngine(SearchEngine):
             return None
         return self.proxies.next()
 
+    def _browser(self) -> BrowserRenderer:
+        if self._renderer is None:
+            proxy = self._request_proxies()
+            self._renderer = BrowserRenderer(
+                user_agent=self._headers()["User-Agent"],
+                proxy=proxy.get("https") if proxy else None,
+            )
+        return self._renderer
+
     def _fetch_page(self, query: str, start: int, per_page: int) -> str:
+        try:
+            return self._fetch_http(query, start, per_page)
+        except (BlockedError, RateLimitedError) as exc:
+            if not self.use_browser_fallback:
+                raise
+            return self._fetch_browser(query, start, per_page, exc)
+
+    def _fetch_http(self, query: str, start: int, per_page: int) -> str:
         self.limiter.acquire()
         params = {
             "q": query,
             "start": start,
             "num": per_page,
             "hl": "en",
+            "udm": "14",  # classic web view: avoids AI Overview / heavy JS
         }
         for attempt in range(self.max_retries + 1):
             proxy = self._request_proxies()
@@ -164,6 +205,26 @@ class GoogleEngine(SearchEngine):
                 resp.raise_for_status()
             return resp.text
         raise RateLimitedError(_google_429_message(query))
+
+    def _fetch_browser(self, query: str, start: int, per_page: int, cause: Exception) -> str:
+        """Render the SERP in headless Chromium after an HTTP block."""
+        log.info("HTTP scraping blocked (%s); falling back to headless browser", cause)
+        from urllib.parse import urlencode
+
+        params = {"q": query, "start": start, "num": per_page, "hl": "en", "udm": "14"}
+        url = "https://www.google.com/search?" + urlencode(params)
+        try:
+            html = self._browser().render(url, wait_selector="div.g")
+        except BrowserUnavailable as exc:
+            raise RateLimitedError(
+                f"{cause}\n\nHeadless-browser fallback unavailable: {exc}"
+            ) from exc
+        if "/sorry" in html or "unusual traffic" in html.lower():
+            raise BlockedError(
+                "Google blocked this network at the IP level (CAPTCHA). Add proxies "
+                "in Tools -> Settings to search Google, or use another engine."
+            )
+        return html
 
     def _sleep_backoff(self, attempt: int, retry_after: str | None) -> None:
         """Sleep before the next retry, honoring Retry-After when provided."""

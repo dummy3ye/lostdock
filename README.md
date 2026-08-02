@@ -97,7 +97,10 @@ cd lostdock
 uv venv
 uv pip install -e ".[dev]"
 
-# 3. Run
+# 3. Install the headless Chromium used by the Google engine's anti-block fallback
+uv run python -m playwright install chromium
+
+# 4. Run
 uv run lostdock
 ```
 
@@ -107,6 +110,7 @@ If you do not have `uv`, you can use plain `pip`:
 python3 -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
+python -m playwright install chromium
 lostdock
 ```
 
@@ -161,8 +165,13 @@ All engines share the same interface (`SearchEngine` in `adapters/base.py`) and 
 rate-limited by default. Add a new engine by subclassing `SearchEngine` and registering it
 in `adapters/__init__.py`.
 
-> **Note on Google:** Google restricts automated access and may serve CAPTCHAs to scrapers.
-> The adapter detects this and surfaces a clear error. For fully compliant production use,
+> **Note on Google:** Google restricts automated access. The Google adapter first
+> tries plain HTTP scraping; if Google responds with a CAPTCHA / rate-limit block,
+> it automatically re-renders the SERP in a real headless Chromium (via Playwright),
+> which defeats Google's behavioral bot-detection on most residential networks.
+> On datacenter IPs Google may block at the IP level regardless — add proxies in
+> Tools → Settings, or use another engine. Requires the Chromium binary once
+> (`python -m playwright install chromium`). For fully compliant production use,
 > integrate the Google Custom Search JSON API (100 free queries/day).
 
 ## Proxies
