@@ -32,44 +32,17 @@ PREFIX_OPERATORS = {
     "before:": "Results before a date (YYYY-MM-DD)",
 }
 
-# Supported file types for the filetype: operator.
-FILE_TYPES = [
-    "pdf",
-    "html",
-    "doc",
-    "docx",
-    "xls",
-    "xlsx",
-    "ppt",
-    "pptx",
-    "txt",
-    "rtf",
-    "csv",
-    "json",
-    "xml",
-    "sql",
-    "log",
-    "conf",
-    "ini",
-    "php",
-    "asp",
-    "aspx",
-    "jsp",
-    "js",
-    "css",
-    "git",
-    "bak",
-    "db",
-    "sqlite",
-    "zip",
-    "gz",
-    "tar",
-    "7z",
-    "rar",
-    "png",
-    "jpg",
-    "gif",
-]
+# Supported file types for the filetype: operator, grouped by category.
+# The dork builder renders these as a 2x2 grid with a "Select All" per group.
+FILE_TYPE_CATEGORIES = {
+    "Documents": ["pdf", "doc", "docx", "txt", "ppt", "pptx"],
+    "Media": ["png", "jpg", "mp4", "mp3", "svg", "gif"],
+    "Spreadsheets & Data": ["xls", "xlsx", "csv", "json"],
+    "Code & Web": ["html", "css", "js", "py"],
+}
+
+# Flattened list kept for the core package export and any external consumers.
+FILE_TYPES = [ft for group in FILE_TYPE_CATEGORIES.values() for ft in group]
 
 # Modifier operators that are combined with a keyword (prefix chars).
 MODIFIERS = {

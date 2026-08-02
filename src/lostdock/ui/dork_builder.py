@@ -4,20 +4,20 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
+    QCheckBox,
     QFormLayout,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QListWidget,
-    QListWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
 from ..core.compiler import compile_dork
 from ..core.models import Dork
-from ..core.operators import FILE_TYPES
+from ..core.operators import FILE_TYPE_CATEGORIES
 
 
 class DorkBuilder(QWidget):
@@ -84,14 +84,34 @@ class DorkBuilder(QWidget):
 
         ft_group = QGroupBox("File types")
         ft_layout = QVBoxLayout(ft_group)
-        self.file_types = QListWidget()
-        self.file_types.setMaximumHeight(120)
-        for ft in FILE_TYPES:
-            item = QListWidgetItem(ft)
-            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            item.setCheckState(Qt.Unchecked)
-            self.file_types.addItem(item)
-        ft_layout.addWidget(self.file_types)
+        self._file_type_boxes: list[tuple[QCheckBox, str]] = []
+        self._category_select_all: list[tuple[QCheckBox, list[QCheckBox]]] = []
+        ft_grid = QGridLayout()
+        ft_grid.setColumnStretch(0, 1)
+        ft_grid.setColumnStretch(1, 1)
+        ft_grid.setRowStretch(0, 1)
+        ft_grid.setRowStretch(1, 1)
+        for index, (category, types) in enumerate(FILE_TYPE_CATEGORIES.items()):
+            cell = QGroupBox(category)
+            cell_layout = QVBoxLayout(cell)
+            select_all = QCheckBox("Select All")
+            group_boxes: list[QCheckBox] = []
+            types_grid = QGridLayout()
+            for i, ft in enumerate(types):
+                box = QCheckBox(ft.upper())
+                box.stateChanged.connect(self._on_change)
+                self._file_type_boxes.append((box, ft))
+                group_boxes.append(box)
+                types_grid.addWidget(box, i // 2, i % 2, Qt.AlignLeft)
+            select_all.toggled.connect(
+                lambda checked, boxes=group_boxes: self._set_group_checked(boxes, checked)
+            )
+            self._category_select_all.append((select_all, group_boxes))
+            cell_layout.addWidget(select_all)
+            cell_layout.addLayout(types_grid)
+            cell_layout.addStretch(1)
+            ft_grid.addWidget(cell, index // 2, index % 2)
+        ft_layout.addLayout(ft_grid)
         layout.addWidget(ft_group)
 
         self.preview = QLabel("")
@@ -121,17 +141,19 @@ class DorkBuilder(QWidget):
 
         for widget in self.findChildren(QLineEdit):
             widget.textChanged.connect(self._on_change)
-        self.file_types.itemChanged.connect(self._on_change)
+
+    def _set_group_checked(self, boxes: list[QCheckBox], checked: bool) -> None:
+        for box in boxes:
+            box.blockSignals(True)
+            box.setChecked(checked)
+            box.blockSignals(False)
+        self._on_change()
 
     def _on_change(self, *args) -> None:
         self.changed.emit(self.compiled_query())
 
     def _checked_file_types(self) -> list[str]:
-        return [
-            self.file_types.item(i).text()
-            for i in range(self.file_types.count())
-            if self.file_types.item(i).checkState() == Qt.Checked
-        ]
+        return [name for box, name in self._file_type_boxes if box.isChecked()]
 
     def dork(self) -> Dork:
         return Dork(
@@ -165,9 +187,10 @@ class DorkBuilder(QWidget):
         self.after.setText(dork.after)
         self.before.setText(dork.before)
         selected = set(dork.file_types)
-        for i in range(self.file_types.count()):
-            item = self.file_types.item(i)
-            item.setCheckState(Qt.Checked if item.text() in selected else Qt.Unchecked)
+        for box, name in self._file_type_boxes:
+            box.setChecked(name in selected)
+        for select_all, boxes in self._category_select_all:
+            select_all.setChecked(bool(boxes) and all(box.isChecked() for box in boxes))
 
 
 def _split(value: QLineEdit) -> list[str]:
