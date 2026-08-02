@@ -80,16 +80,30 @@ def _installed_version() -> str | None:
     return None
 
 
-def _latest_release() -> tuple[str, str]:
-    """Return (version, asset_url) for the newest windows zip release."""
+def _latest_release() -> tuple[str, str, str]:
+    """Return (version, asset_url, release_notes) for the newest windows zip release."""
     req = urllib.request.Request(API_LATEST, headers={"User-Agent": "lostdock-installer"})
     with urllib.request.urlopen(req, timeout=60) as resp:
         release = json.load(resp)
     version = release["tag_name"].lstrip("v")
+    notes = release.get("body") or ""
     for asset in release.get("assets", []):
         if asset["name"].startswith(ASSET_PREFIX) and asset["name"].endswith(".zip"):
-            return version, asset["browser_download_url"]
+            return version, asset["browser_download_url"], notes
     raise RuntimeError(f"no windows zip asset found in release v{version}")
+
+
+def _launch_app() -> bool:
+    """Launch the installed LostDock app if present."""
+    exe = os.path.join(install_dir(), "LostDock.exe")
+    if not os.path.exists(exe):
+        return False
+    subprocess.Popen(
+        [exe],
+        cwd=os.path.dirname(exe),
+        creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+    )
+    return True
 
 
 def _download(url: str, dest: str, report: Report | None = None) -> None:
@@ -178,7 +192,7 @@ def _deploy(report: Report | None = None) -> str:
     Returns the installed version string. The app binary is normalized to
     ``LostDock.exe`` regardless of how it is named inside the archive.
     """
-    version, url = _latest_release()
+    version, url, _notes = _latest_release()
     dest = install_dir()
     os.makedirs(dest, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
@@ -278,12 +292,15 @@ class _InstallerApp:
         self.ttk = ttk
         self.messagebox = messagebox
         self._busy = False
+        self._latest_version: str | None = None
         self._build()
+        self._refresh_status()
+        self._fetch_release_info()
 
     def _build(self) -> None:
         self.root.title("LostDock Installer")
         self.root.resizable(False, False)
-        self.root.geometry("460x320")
+        self.root.geometry("560x560")
         frame = self.ttk.Frame(self.root, padding=16)
         frame.pack(fill="both", expand=True)
 
@@ -292,14 +309,18 @@ class _InstallerApp:
             frame, text="Install, update or remove LostDock on this PC.", foreground="#555"
         ).pack(anchor="w", pady=(2, 12))
 
-        self.status = self.ttk.Label(frame, text="Checking for updates...", anchor="w")
-        self.status.pack(fill="x")
+        self.status = self.ttk.Label(frame, text="Installed: --    Latest: checking...", anchor="w")
+        self.status.pack(fill="x", pady=(0, 8))
+
+        self.ttk.Label(frame, text="Release notes", anchor="w").pack(anchor="w")
+        self.notes = self.tk.Text(frame, height=9, state="disabled", wrap="word", relief="sunken")
+        self.notes.pack(fill="x", pady=(2, 8))
 
         self.progress = self.ttk.Progressbar(frame, mode="indeterminate")
-        self.progress.pack(fill="x", pady=(6, 4))
+        self.progress.pack(fill="x", pady=(0, 4))
         self.progress["value"] = 0
 
-        self.log = self.tk.Text(frame, height=6, state="disabled", wrap="word", relief="sunken")
+        self.log = self.tk.Text(frame, height=5, state="disabled", wrap="word", relief="sunken")
         self.log.pack(fill="both", expand=True, pady=(8, 10))
 
         buttons = self.ttk.Frame(frame)
@@ -308,12 +329,12 @@ class _InstallerApp:
         self.btn_uninstall.pack(side="right")
         self.btn_close = self.ttk.Button(buttons, text="Close", command=self.root.destroy)
         self.btn_close.pack(side="right", padx=(0, 8))
+        self.btn_run = self.ttk.Button(buttons, text="Run Now", command=self.on_run)
+        self.btn_run.pack(side="left", padx=(0, 8))
         self.btn_install = self.ttk.Button(
             buttons, text="Install / Update", command=self.on_install
         )
         self.btn_install.pack(side="left")
-
-        self._refresh_status()
 
     def _report(self, text: str) -> None:
         self.root.after(0, self._append_log, text)
@@ -324,11 +345,18 @@ class _InstallerApp:
         self.log.see("end")
         self.log.configure(state="disabled")
 
+    def _set_notes(self, text: str) -> None:
+        self.notes.configure(state="normal")
+        self.notes.delete("1.0", "end")
+        self.notes.insert("1.0", text)
+        self.notes.configure(state="disabled")
+
     def _set_busy(self, busy: bool) -> None:
         self._busy = busy
         state = "disabled" if busy else "normal"
         self.btn_install.configure(state=state)
         self.btn_uninstall.configure(state=state)
+        self.btn_run.configure(state=state)
         if busy:
             self.progress.start()
         else:
@@ -336,9 +364,32 @@ class _InstallerApp:
 
     def _refresh_status(self) -> None:
         installed = _installed_version()
-        label = f"Installed: {('v' + installed) if installed else 'not installed'}"
+        latest = self._latest_version or "checking..."
+        label = (
+            f"Installed: {('v' + installed) if installed else 'not installed'}    Latest: {latest}"
+        )
         self.status.configure(text=label)
-        self._append_log(f"Latest release: {API_LATEST}")
+        self.btn_run.configure(state="normal" if installed else "disabled")
+
+    def _fetch_release_info(self) -> None:
+        def runner() -> None:
+            try:
+                version, _url, notes = _latest_release()
+            except Exception:
+                self.root.after(0, self._release_info_failed)
+                return
+            self.root.after(0, self._release_info_ready, version, notes)
+
+        threading.Thread(target=runner, daemon=True).start()
+
+    def _release_info_ready(self, version: str, notes: str) -> None:
+        self._latest_version = version
+        self._set_notes(notes or f"v{version}\n\n(no release notes provided)")
+        self._refresh_status()
+
+    def _release_info_failed(self) -> None:
+        self._set_notes("Could not fetch the latest release info. Check your connection.")
+        self._refresh_status()
 
     def _work(self, fn: Callable[[], int]) -> None:
         if self._busy:
@@ -369,6 +420,14 @@ class _InstallerApp:
         if not self.messagebox.askyesno("Uninstall LostDock", "Remove LostDock and all its files?"):
             return
         self._work(lambda: (_do_uninstall(self._report), 0)[1])
+
+    def on_run(self) -> None:
+        if self._busy:
+            return
+        if _launch_app():
+            self._append_log("LostDock launched.")
+        else:
+            self.messagebox.showwarning("Run Now", "LostDock is not installed yet.")
 
 
 def run_gui() -> int:

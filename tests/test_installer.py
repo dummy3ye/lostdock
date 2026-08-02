@@ -25,7 +25,7 @@ def _isolate(monkeypatch, tmp_path):
 def _fake_release(
     monkeypatch, version="0.2.1", url="https://example.invalid/lostdock-windows-0.2.1.zip"
 ):
-    monkeypatch.setattr(_installer, "_latest_release", lambda: (version, url))
+    monkeypatch.setattr(_installer, "_latest_release", lambda: (version, url, "notes"))
 
 
 def _fake_download(monkeypatch, tmp_path):
@@ -42,6 +42,7 @@ def _fake_download(monkeypatch, tmp_path):
 def test_latest_release_parses_asset(monkeypatch):
     payload = {
         "tag_name": "v0.2.1",
+        "body": "## What's new\n- fix thing",
         "assets": [
             {
                 "name": "lostdock-linux-0.2.1.tar.gz",
@@ -66,9 +67,10 @@ def test_latest_release_parses_asset(monkeypatch):
         return FakeResponse()
 
     monkeypatch.setattr(_installer.urllib.request, "urlopen", fake_urlopen)
-    version, url = _installer._latest_release()
+    version, url, notes = _installer._latest_release()
     assert version == "0.2.1"
     assert url == "https://x/windows.zip"
+    assert "fix thing" in notes
 
 
 def test_latest_release_missing_asset(monkeypatch):
