@@ -89,9 +89,8 @@ class DorkBuilder(QWidget):
         ft_grid = QGridLayout()
         ft_grid.setColumnStretch(0, 1)
         ft_grid.setColumnStretch(1, 1)
-        ft_grid.setRowStretch(0, 1)
-        ft_grid.setRowStretch(1, 1)
-        for index, (category, types) in enumerate(FILE_TYPE_CATEGORIES.items()):
+        categories = list(FILE_TYPE_CATEGORIES.items())
+        for index, (category, types) in enumerate(categories):
             cell = QGroupBox(category)
             cell_layout = QVBoxLayout(cell)
             select_all = QCheckBox("Select All")
@@ -110,7 +109,10 @@ class DorkBuilder(QWidget):
             cell_layout.addWidget(select_all)
             cell_layout.addLayout(types_grid)
             cell_layout.addStretch(1)
-            ft_grid.addWidget(cell, index // 2, index % 2)
+            if index + 1 == len(categories) and len(categories) % 2:
+                ft_grid.addWidget(cell, index // 2, 0, 1, 2)
+            else:
+                ft_grid.addWidget(cell, index // 2, index % 2)
         ft_layout.addLayout(ft_grid)
         layout.addWidget(ft_group)
 
