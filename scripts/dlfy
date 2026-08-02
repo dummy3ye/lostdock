@@ -137,6 +137,21 @@ push_panel "${C_PEACH}engines ${C_TEXT}${ENGINES:-0}${C_RESET}  ${C_PEACH}file g
 push_panel "${C_PEACH}plugins ${C_TEXT}${PLUGINS:-0}${C_RESET}  ${C_SUBTLE}license ${C_TEXT}${LICENSE:-?}${C_RESET}"
 push_panel ""
 
+# Strip leading/trailing blank rows so the art centers against the panel.
+art_is_blank() {
+    local line="$1" stripped
+    stripped="$(printf '%b' "$line" | sed -E 's/\x1b\[[0-9;]*m//g' | sed -E 's/[[:space:]]+$//')"
+    [[ -z "$stripped" ]]
+}
+trim_art_edges() {
+    while [[ "${#ART[@]}" -gt 0 ]] && art_is_blank "${ART[0]}"; do
+        ART=("${ART[@]:1}")
+    done
+    while [[ "${#ART[@]}" -gt 0 ]] && art_is_blank "${ART[-1]}"; do
+        ART=("${ART[@]:0:${#ART[@]}-1}")
+    done
+}
+
 if [[ "$ART_ONLY" -eq 1 ]]; then
     trim_art_edges
     printf '%s\n' "${ART[@]:-}"
@@ -158,21 +173,6 @@ TAGLINES=(
 TAGLINE="${TAGLINES[$((RANDOM % ${#TAGLINES[@]}))]}"
 
 printf '%b' "${C_BOLD}${C_BLUE}═ lost dock ═${C_RESET} ${C_SUBTLE}the repo card with a peg leg${C_RESET}\n\n"
-
-# Strip leading/trailing blank rows so the art centers against the panel.
-art_is_blank() {
-    local line="$1" stripped
-    stripped="$(printf '%b' "$line" | sed -E 's/\x1b\[[0-9;]*m//g' | sed -E 's/[[:space:]]+$//')"
-    [[ -z "$stripped" ]]
-}
-trim_art_edges() {
-    while [[ "${#ART[@]}" -gt 0 ]] && art_is_blank "${ART[0]}"; do
-        ART=("${ART[@]:1}")
-    done
-    while [[ "${#ART[@]}" -gt 0 ]] && art_is_blank "${ART[-1]}"; do
-        ART=("${ART[@]:0:${#ART[@]}-1}")
-    done
-}
 
 if [[ "${#ART[@]}" -gt 0 ]]; then
     trim_art_edges
