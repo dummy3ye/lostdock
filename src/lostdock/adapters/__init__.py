@@ -5,6 +5,7 @@ from .bing import BingEngine
 from .chrome import ChromeEngine
 from .duckduckgo import DuckDuckGoEngine
 from .google import GoogleEngine
+from .multi import MultiEngine
 
 ENGINES = {
     "google": GoogleEngine,
@@ -21,6 +22,7 @@ __all__ = [
     "DuckDuckGoEngine",
     "EngineError",
     "GoogleEngine",
+    "MultiEngine",
     "RateLimitedError",
     "SearchEngine",
 ]

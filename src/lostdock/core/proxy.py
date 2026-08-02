@@ -50,6 +50,11 @@ class ProxyPool:
         with self._lock:
             return len(self._proxies)
 
+    def strings(self) -> list[str]:
+        """Return the original proxy strings (https form when available)."""
+        with self._lock:
+            return [entry.get("https") or entry.get("http", "") for entry in self._proxies]
+
     def next(self) -> dict[str, str] | None:
         """Return the next available proxy (or None if none enabled)."""
         now = time.monotonic()
@@ -96,3 +101,29 @@ class ProxyPool:
                 log.debug("Proxy check failed for %s: %s", p.get("https"), exc)
         with self._lock:
             self._proxies = healthy
+
+    def check_all(
+        self,
+        timeout: float = 8.0,
+        test_url: str = "https://example.com",
+    ) -> list[tuple[dict[str, str], bool]]:
+        """Test every proxy without mutating the pool.
+
+        Returns [(proxy, ok)] so callers can report which proxies work.
+        """
+        with self._lock:
+            proxies = list(self._proxies)
+        results: list[tuple[dict[str, str], bool]] = []
+        for p in proxies:
+            try:
+                requests.get(
+                    test_url,
+                    proxies=p,
+                    timeout=timeout,
+                    headers={"User-Agent": "lostdock-proxy-check"},
+                )
+                results.append((p, True))
+            except requests.RequestException as exc:
+                log.debug("Proxy check failed for %s: %s", p.get("https"), exc)
+                results.append((p, False))
+        return results

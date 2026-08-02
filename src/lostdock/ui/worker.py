@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QObject, QThread, Signal
 
-from ..adapters import SearchEngine
+from ..adapters import MultiEngine, SearchEngine
 from ..core.models import Dork
 from ..services.crawler import crawl_url
 from ..services.plugins import Plugin
@@ -42,6 +42,8 @@ class SearchWorker(QObject):
         self._cancelled = True
 
     def run(self) -> None:
+        if isinstance(self.engine, MultiEngine):
+            self.engine.on_status = lambda msg: self.status.emit(msg)
         collected = run_query(
             self.engine,
             self.repo,

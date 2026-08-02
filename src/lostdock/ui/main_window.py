@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..adapters import ENGINES
+from ..adapters import ENGINES, MultiEngine
 from ..core.models import SearchResult
 from ..core.proxy import ProxyPool
 from ..services.exporter import export_results
@@ -35,6 +35,9 @@ from .results_view import ResultsView
 from .settings import SettingsDialog
 from .theme import stylesheet, themes
 from .worker import CrawlWorker, SearchWorker, run_crawl, run_search
+
+PROXIES_SETTING = "proxies"
+HTTP_ENGINES = ("google", "duckduckgo", "bing")
 
 
 class MainWindow(QMainWindow):
@@ -50,6 +53,7 @@ class MainWindow(QMainWindow):
         )
         self._build_ui()
         self._apply_theme("dark")
+        self._load_persisted_proxies()
         self.scheduler.start()
         self.setWindowTitle("LostDock — Google Dorking")
         self.resize(1180, 760)
@@ -90,10 +94,11 @@ class MainWindow(QMainWindow):
 
         self.toolbar.addWidget(QLabel("Engine"))
         self.engine_combo = QComboBox()
+        self.engine_combo.addItem("all (auto-fallback)", "all")
         for name in ENGINES:
             label = "chrome (pipe)" if name == "google-chrome" else name
             self.engine_combo.addItem(label, name)
-        self.engine_combo.setCurrentIndex(self.engine_combo.findData("google-chrome"))
+        self.engine_combo.setCurrentIndex(0)
         self.toolbar.addWidget(self.engine_combo)
 
         self.toolbar.addWidget(QLabel("Pages"))
@@ -217,15 +222,26 @@ class MainWindow(QMainWindow):
         self._refresh_saved_dorks()
         self.statusBar().showMessage(f"Deleted dork '{name}'")
 
+    def _load_persisted_proxies(self) -> None:
+        raw = self.repo.get_setting(PROXIES_SETTING)
+        proxies = [p.strip() for p in raw.splitlines() if p.strip()]
+        if proxies:
+            self.proxy_pool = ProxyPool.from_strings(proxies)
+
     def _on_settings(self) -> None:
         dialog = SettingsDialog(self.repo, self)
+        dialog.set_proxies(self._proxy_strings())
         if dialog.exec():
             proxies = dialog.proxy_list()
+            self.repo.set_setting(PROXIES_SETTING, "\n".join(proxies))
             self.proxy_pool = ProxyPool.from_strings(proxies) if proxies else None
             choice = dialog.schedule_choice()
             if choice:
                 name, interval = choice
                 self.statusBar().showMessage(f"Scheduled '{name}' every {interval} min")
+
+    def _proxy_strings(self) -> list[str]:
+        return self.proxy_pool.strings() if self.proxy_pool else []
 
     def _on_recrawl(self) -> None:
         """Fetch each shown URL off the UI thread and annotate status."""
@@ -265,13 +281,19 @@ class MainWindow(QMainWindow):
     def _on_highlight_changed(self, pattern: str) -> None:
         self.results.set_highlight(pattern or None)
 
+    def _build_engine(self, name: str):
+        """Build the selected engine, aggregating all HTTP engines for 'all'."""
+        if name == "all":
+            engines = [ENGINES[n](proxies=self.proxy_pool) for n in HTTP_ENGINES]
+            return MultiEngine(engines)
+        return ENGINES[name](proxies=self.proxy_pool)
+
     def _on_run(self) -> None:
         dork = self.builder.dork()
         if not self.builder.compiled_query():
             QMessageBox.warning(self, "Empty query", "Build a query first.")
             return
-        engine_cls = ENGINES[self.engine_combo.currentData()]
-        engine = engine_cls(proxies=self.proxy_pool)
+        engine = self._build_engine(self.engine_combo.currentData())
         self.results.setRowCount(0)
         self.results.count_changed.emit(0)
         plugins = getattr(QApplication.instance(), "plugins", [])
@@ -285,6 +307,7 @@ class MainWindow(QMainWindow):
         self.worker.result_ready.connect(self._on_result)
         self.worker.finished.connect(self._on_finished)
         self.worker.failed.connect(self._on_failed)
+        self.worker.status.connect(lambda msg: self.statusBar().showMessage(msg))
         self.run_btn.setEnabled(False)
         self.cancel_btn.setEnabled(True)
         self.statusBar().showMessage("Searching...")

@@ -59,6 +59,16 @@ def test_schedule_due_after_bump(tmp_path):
     repo.close()
 
 
+def test_settings_get_set_roundtrip(tmp_path):
+    repo = Repository(tmp_path / "settings.db")
+    assert repo.get_setting("proxies") == ""
+    repo.set_setting("proxies", "http://a:1\nhttp://b:2")
+    assert repo.get_setting("proxies") == "http://a:1\nhttp://b:2"
+    repo.set_setting("proxies", "http://c:3")
+    assert repo.get_setting("proxies") == "http://c:3"
+    repo.close()
+
+
 def test_update_crawl(tmp_path):
     repo = Repository(tmp_path / "c.db")
     job = repo.create_job("q", "google")
