@@ -138,11 +138,7 @@ push_panel "${C_PEACH}plugins ${C_TEXT}${PLUGINS:-0}${C_RESET}  ${C_SUBTLE}licen
 push_panel ""
 
 if [[ "$ART_ONLY" -eq 1 ]]; then
-    while [[ "${#ART[@]}" -gt 0 ]]; do
-        trimmed="$(printf '%b' "${ART[-1]}" | sed -E 's/\x1b\[[0-9;]*m//g' | sed -E 's/[[:space:]]+$//')"
-        [[ -z "$trimmed" ]] || break
-        ART=("${ART[@]:0:${#ART[@]}-1}")
-    done
+    trim_art_edges
     printf '%s\n' "${ART[@]:-}"
     exit 0
 fi
@@ -163,15 +159,35 @@ TAGLINE="${TAGLINES[$((RANDOM % ${#TAGLINES[@]}))]}"
 
 printf '%b' "${C_BOLD}${C_BLUE}═ lost dock ═${C_RESET} ${C_SUBTLE}the repo card with a peg leg${C_RESET}\n\n"
 
-if [[ "${#ART[@]}" -gt 0 ]]; then
-    while [[ "${#ART[@]}" -gt "${#panel[@]}" ]]; do
-        last="${ART[-1]}"
-        trimmed="$(printf '%b' "$last" | sed -E 's/\x1b\[[0-9;]*m//g' | sed -E 's/[[:space:]]+$//')"
-        [[ -z "$trimmed" ]] || break
+# Strip leading/trailing blank rows so the art centers against the panel.
+art_is_blank() {
+    local line="$1" stripped
+    stripped="$(printf '%b' "$line" | sed -E 's/\x1b\[[0-9;]*m//g' | sed -E 's/[[:space:]]+$//')"
+    [[ -z "$stripped" ]]
+}
+trim_art_edges() {
+    while [[ "${#ART[@]}" -gt 0 ]] && art_is_blank "${ART[0]}"; do
+        ART=("${ART[@]:1}")
+    done
+    while [[ "${#ART[@]}" -gt 0 ]] && art_is_blank "${ART[-1]}"; do
         ART=("${ART[@]:0:${#ART[@]}-1}")
     done
-    rows="${#ART[@]}"
-    [[ "${#panel[@]}" -gt "$rows" ]] && rows="${#panel[@]}"
+}
+
+if [[ "${#ART[@]}" -gt 0 ]]; then
+    trim_art_edges
+    rows="${#panel[@]}"
+    if [[ "${#ART[@]}" -lt "$rows" ]]; then
+        pad_rows=$((rows - ${#ART[@]}))
+        top=$((pad_rows / 2))
+        bottom=$((pad_rows - top))
+        blank="$(pad "$ART_W")"
+        padded=()
+        for ((p = 0; p < top; p++)); do padded+=("$blank"); done
+        padded+=("${ART[@]}")
+        for ((p = 0; p < bottom; p++)); do padded+=("$blank"); done
+        ART=("${padded[@]}")
+    fi
     for ((i = 0; i < rows; i++)); do
         printf '%b' "${ART[i]:-$(pad "$ART_W")}"
         printf '  '
