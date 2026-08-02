@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+#
+# dlfy — the lost dock card. onefetch grew a peg leg and a parrot.
+#
+# A creative, terminal-native "about this repo" card for LostDock:
+# chafa-rendered colored art of the repo logo on the left, a living
+# stat panel on the right, and a sprinkle of dorking-themed nonsense.
+#
+# Usage:
+#   ./scripts/dlfy [path]        # run inside the repo (or point at one)
+#   ./scripts/dlfy --no-art      # skip the image, keep the stats
+#   ./scripts/dlfy --art-only    # just the pretty picture
+#   ./scripts/dlfy --width=40    # art width in terminal columns
+#
+# Dependencies (optional): chafa, magick. Everything degrades gracefully.
+
+set -euo pipefail
+
+# --- colors (Catppuccin Mocha, matching the app's palette) ----------------
+C_BLUE='\033[38;2;137;180;250m'
+C_MAUVE='\033[38;2;203;166;247m'
+C_TEAL='\033[38;2;148;226;213m'
+C_PINK='\033[38;2;245;194;231m'
+C_PEACH='\033[38;2;250;179;135m'
+C_YELLOW='\033[38;2;249;226;175m'
+C_GREEN='\033[38;2;166;227;161m'
+C_TEXT='\033[38;2;205;214;244m'
+C_SUBTLE='\033[38;2;147;153;178m'
+C_BOLD='\033[1m'
+C_RESET='\033[0m'
+
+ART_W=36
+NO_ART=0
+ART_ONLY=0
+TARGET="."
+for arg in "$@"; do
+    case "$arg" in
+        --no-art) NO_ART=1 ;;
+        --art-only) ART_ONLY=1 ;;
+        --width=*) ART_W="${arg#--width=}" ;;
+        --help|-h)
+            sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
+            exit 0
+            ;;
+        -*) echo "dlfy: unknown option '$arg'" >&2; exit 1 ;;
+        *) TARGET="$arg" ;;
+    esac
+done
+
+if [[ ! -d "$TARGET/.git" && ! -d "$TARGET" ]]; then
+    echo "dlfy: '$TARGET' is not a directory or git repo" >&2
+    exit 1
+fi
+
+cd "$TARGET" 2>/dev/null || cd "$(git -C "$TARGET" rev-parse --show-toplevel 2>/dev/null)" || true
+
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    echo "dlfy: not inside a git repository" >&2
+    exit 1
+fi
+
+# --- gather the legend ------------------------------------------------------
+
+PROJECT_NAME="${PROJECT_NAME:-$(git remote get-url origin 2>/dev/null | sed -E 's#\.git$##' | sed -E 's#.*[/:]##')}"
+PROJECT_NAME="${PROJECT_NAME:-$(basename "$(pwd)")}"
+
+DESCRIPTION="$(sed -n 's/^description = "\(.*\)"/\1/p' pyproject.toml 2>/dev/null | head -1)"
+VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml 2>/dev/null | head -1)"
+BRANCH="$(git branch --show-current 2>/dev/null || echo detached)"
+REMOTE="$(git remote get-url origin 2>/dev/null | sed -E 's#^git@github.com:#github.com/#' || true)"
+COMMITS="$(git rev-list --count HEAD 2>/dev/null)"
+AUTHOR="$(git config user.name 2>/dev/null)"
+CONTRIBUTORS="$(git shortlog -sn HEAD 2>/dev/null | wc -l | tr -d ' ')"
+LAST_COMMIT="$(git log -1 --format='%h %s' 2>/dev/null)"
+AGE="$(git log -1 --format='%cr' 2>/dev/null)"
+BIRTH="$(git log --reverse --format='%ad' --date=short -1 2>/dev/null)"
+LICENSE="$(sed -n 's/^\(.*License\)$/\1/p' LICENSE 2>/dev/null | head -1)"
+if [[ -z "$LICENSE" ]]; then
+    LICENSE="$(grep -i license README.md 2>/dev/null | head -1 | sed 's/.*://')"
+fi
+LOC="$(find src -name '*.py' 2>/dev/null | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')"
+TESTS="$(grep -c 'def test_' tests/*.py 2>/dev/null | awk -F: '{s+=$2} END {print s+0}')"
+ENGINES="$(ls src/lostdock/adapters/*.py 2>/dev/null | wc -l | tr -d ' ')"
+FILE_GROUPS="$(grep -c '": \[' src/lostdock/core/operators.py 2>/dev/null || echo 0)"
+PLUGINS="$(ls plugins/*.py 2>/dev/null | wc -l | tr -d ' ')"
+TAGS="$(git tag 2>/dev/null | wc -l | tr -d ' ')"
+
+# --- the pretty picture ------------------------------------------------------
+
+render_art() {
+    local art
+    art="$(chafa -f symbols -s "${ART_W}x24" --fg-only --polite=on "$1" 2>/dev/null)"
+    printf '%s\n' "$art"
+}
+
+ART=()
+if [[ "$NO_ART" -eq 0 ]] && command -v chafa >/dev/null 2>&1; then
+    LOGO="assets/logo.png"
+    if [[ -f "$LOGO" ]]; then
+        if command -v magick >/dev/null 2>&1; then
+            TMP_LOGO="$(mktemp -t dlfy-XXXXXX.png)"
+            trap 'rm -f "$TMP_LOGO"' EXIT
+            magick "$LOGO" -fuzz 4% -transparent white \
+                -fill '#b4befe' -colorize 100 \
+                -fill '#89b4fa' -opaque '#b4befe' \
+                -fill '#f5e0dc' -colorize 8 \
+                "$TMP_LOGO" 2>/dev/null
+            mapfile -t ART < <(render_art "$TMP_LOGO")
+        else
+            mapfile -t ART < <(render_art "$LOGO")
+        fi
+    fi
+fi
+
+# --- the panel ----------------------------------------------------------------
+
+panel=()
+pad() { printf '%-*s' "$1" ""; }
+
+push_panel() { panel+=("$1"); }
+
+push_panel "${C_BOLD}${C_BLUE}${PROJECT_NAME}${C_RESET} ${C_SUBTLE}v${VERSION:-?}${C_RESET}"
+[[ -n "$DESCRIPTION" ]] && push_panel "${C_SUBTLE}${DESCRIPTION}${C_RESET}"
+push_panel ""
+
+push_panel "${C_SUBTLE}branch ${C_TEXT}${BRANCH}${C_RESET}  ${C_SUBTLE}remote ${C_TEXT}${REMOTE:-none}${C_RESET}"
+push_panel "${C_SUBTLE}commit ${C_TEXT}${LAST_COMMIT}${C_RESET}"
+push_panel "${C_SUBTLE}age    ${C_TEXT}${AGE}${C_RESET}  ${C_SUBTLE}born ${C_TEXT}${BIRTH:-?}${C_RESET}"
+push_panel ""
+
+push_panel "${C_SUBTLE}language ${C_BLUE}Python${C_RESET} ${C_TEXT}${LOC:-0}${C_RESET} ${C_SUBTLE}lines${C_RESET}"
+push_panel "${C_SUBTLE}commits ${C_GREEN}${COMMITS:-0}${C_RESET}  ${C_SUBTLE}contributors ${C_GREEN}${CONTRIBUTORS:-0}${C_RESET}"
+push_panel "${C_SUBTLE}tests ${C_GREEN}${TESTS:-0}${C_RESET}  ${C_SUBTLE}tags ${C_GREEN}${TAGS:-0}${C_RESET}"
+push_panel ""
+
+push_panel "${C_PEACH}engines ${C_TEXT}${ENGINES:-0}${C_RESET}  ${C_PEACH}file groups ${C_TEXT}${FILE_GROUPS:-0}${C_RESET}"
+push_panel "${C_PEACH}plugins ${C_TEXT}${PLUGINS:-0}${C_RESET}  ${C_SUBTLE}license ${C_TEXT}${LICENSE:-?}${C_RESET}"
+push_panel ""
+
+if [[ "$ART_ONLY" -eq 1 ]]; then
+    while [[ "${#ART[@]}" -gt 0 ]]; do
+        trimmed="$(printf '%b' "${ART[-1]}" | sed -E 's/\x1b\[[0-9;]*m//g' | sed -E 's/[[:space:]]+$//')"
+        [[ -z "$trimmed" ]] || break
+        ART=("${ART[@]:0:${#ART[@]}-1}")
+    done
+    printf '%s\n' "${ART[@]:-}"
+    exit 0
+fi
+
+# --- the card ----------------------------------------------------------------
+
+TAGLINES=(
+    "scanning harbor... found nothing but dorks"
+    "3 engines, 2 captchas, 1 janky pipe"
+    "the dock is lost, the dorks are forever"
+    "pegging the needle to filetype:pdf"
+    "somewhere, a proxy pool is crying"
+    "add proxies in Tools > Settings and all is forgiven"
+    "chafa may be the art, but python is the heart"
+    "certifiably not a ship"
+)
+TAGLINE="${TAGLINES[$((RANDOM % ${#TAGLINES[@]}))]}"
+
+printf '%b' "${C_BOLD}${C_BLUE}═ lost dock ═${C_RESET} ${C_SUBTLE}the repo card with a peg leg${C_RESET}\n\n"
+
+if [[ "${#ART[@]}" -gt 0 ]]; then
+    while [[ "${#ART[@]}" -gt "${#panel[@]}" ]]; do
+        last="${ART[-1]}"
+        trimmed="$(printf '%b' "$last" | sed -E 's/\x1b\[[0-9;]*m//g' | sed -E 's/[[:space:]]+$//')"
+        [[ -z "$trimmed" ]] || break
+        ART=("${ART[@]:0:${#ART[@]}-1}")
+    done
+    rows="${#ART[@]}"
+    [[ "${#panel[@]}" -gt "$rows" ]] && rows="${#panel[@]}"
+    for ((i = 0; i < rows; i++)); do
+        printf '%b' "${ART[i]:-$(pad "$ART_W")}"
+        printf '  '
+        printf '%b' "${panel[i]:-}"
+        printf '\n'
+    done
+else
+    printf '%b' "${C_BLUE}┌────────────────────────────────────────────────┐${C_RESET}\n"
+    for ((i = 0; i < "${#panel[@]}"; i++)); do
+        printf '%b' "${C_BLUE}│${C_RESET} ${panel[i]}"
+        printf '\n'
+    done
+    printf '%b' "${C_BLUE}└────────────────────────────────────────────────┘${C_RESET}\n"
+fi
+
+printf '%b' "\n${C_PINK}~ ${TAGLINE}${C_RESET}\n"
