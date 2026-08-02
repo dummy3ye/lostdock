@@ -1,27 +1,29 @@
-## [0.2.1] - 2026-08-02
+## [0.3.0] - 2026-08-02
 
 ### Features
 
-- Add logo png and ascii art
-- Headless-browser fallback for Google CAPTCHA blocks
-- Label chrome engine as 'chrome (pipe)' and default to it
+- Render file types as a 2x2 category grid with select-all
+- Prune non-indexable file types and make builder scrollable
+- Add dlfy repo card with chafa-colored logo art
+- Use terminal-native colors and theme-aware art accent
+- Windows gui installer/updater/uninstaller exe
+- Add light/dark theme toggle in the View menu
+- Replace dark-mode toggle with an extensible Theme submenu
 
 ### Bug Fixes
 
-- Preserve search query on results round-trip
-- Remove duplicate schedule save on settings accept
-- Apply rate limiter jitter once per acquire
-- Scope google SERP parsing to organic result blocks
-- Add chrome adapter to pyinstaller hiddenimports
+- Include all original file types in category grid
+- Define art-trim helpers before the art-only path
 
-### Refactoring
+### Documentation
 
-- Consolidate query execution into run_query
-- Drop dead import branch for MainWindow
+- Reword project description for osint focus
 
-### Chore
+### Styling
 
-- Enable ruff, auto-fix style debt, add CI lint step
+- Widen repo card art to 48 columns
+- Center repo art vertically against the panel
+- Drop the lost-dock banner line
 
 
-**Full Changelog**: https://github.com/dummy3ye/lostdock/compare/v0.1.1...v0.2.1
+**Full Changelog**: https://github.com/dummy3ye/lostdock/compare/v0.2.1...v0.3.0
