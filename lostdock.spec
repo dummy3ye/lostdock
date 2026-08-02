@@ -48,6 +48,7 @@ a = Analysis(
         "lostdock.adapters.google",
         "lostdock.adapters.duckduckgo",
         "lostdock.adapters.bing",
+        "lostdock.adapters.chrome",
         "lostdock.services",
         "lostdock.services.repository",
         "lostdock.services.query",
