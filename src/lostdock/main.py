@@ -8,12 +8,19 @@ from pathlib import Path
 from PySide6.QtWidgets import QApplication
 
 if getattr(sys, "frozen", False) or __package__ in (None, ""):
-    from lostdock.services.repository import Repository
     from lostdock.services.plugins import discover_plugins
-    from lostdock.ui.main_window import MainWindow
+    from lostdock.services.repository import Repository
 else:
-    from .services.repository import Repository
     from .services.plugins import discover_plugins
+    from .services.repository import Repository
+
+
+def _import_main_window():
+    if getattr(sys, "frozen", False) or __package__ in (None, ""):
+        from lostdock.ui.main_window import MainWindow
+    else:
+        from .ui.main_window import MainWindow
+    return MainWindow
 
 
 def load_plugins(app) -> None:
@@ -42,10 +49,7 @@ def main() -> int:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     repo = Repository(db_path)
 
-    if getattr(sys, "frozen", False) or __package__ in (None, ""):
-        from lostdock.ui.main_window import MainWindow
-    else:
-        from .ui.main_window import MainWindow
+    MainWindow = _import_main_window()
 
     window = MainWindow(repo, db_path)
     window.show()
