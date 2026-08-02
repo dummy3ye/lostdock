@@ -34,12 +34,27 @@ PREFIX_OPERATORS = {
 
 # Supported file types for the filetype: operator, grouped by category.
 # The dork builder renders these as a grid with a "Select All" per group.
+# Only types Google actually indexes are kept; archives (zip/gz/tar/7z/rar),
+# binary databases (db/sqlite), audio (mp3) and backups (bak) are excluded
+# because filetype: returns nothing for them.
 FILE_TYPE_CATEGORIES = {
     "Documents": ["pdf", "doc", "docx", "txt", "rtf", "ppt", "pptx"],
-    "Media": ["png", "jpg", "gif", "mp4", "mp3", "svg"],
-    "Spreadsheets & Data": ["xls", "xlsx", "csv", "json", "xml", "sql", "db", "sqlite"],
-    "Code & Web": ["html", "css", "js", "py", "php", "asp", "aspx", "jsp", "git", "conf", "ini"],
-    "Archives & Backup": ["zip", "gz", "tar", "7z", "rar", "bak", "log"],
+    "Media": ["png", "jpg", "gif", "mp4", "svg"],
+    "Spreadsheets & Data": ["xls", "xlsx", "csv", "json", "xml", "sql"],
+    "Code & Web": [
+        "html",
+        "css",
+        "js",
+        "py",
+        "php",
+        "asp",
+        "aspx",
+        "jsp",
+        "git",
+        "conf",
+        "ini",
+        "log",
+    ],
 }
 
 # Flattened list kept for the core package export and any external consumers.

@@ -9,10 +9,12 @@ from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
     QFileDialog,
+    QFrame,
     QLabel,
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QSpinBox,
     QSplitter,
@@ -60,8 +62,13 @@ class MainWindow(QMainWindow):
 
         self.results = ResultsView()
 
+        builder_scroll = QScrollArea()
+        builder_scroll.setWidget(self.builder)
+        builder_scroll.setWidgetResizable(True)
+        builder_scroll.setFrameShape(QFrame.NoFrame)
+
         splitter = QSplitter(Qt.Horizontal)
-        splitter.addWidget(self.builder)
+        splitter.addWidget(builder_scroll)
         splitter.addWidget(self.results)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
