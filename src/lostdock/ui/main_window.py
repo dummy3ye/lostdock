@@ -157,7 +157,14 @@ class MainWindow(QMainWindow):
         self.theme_menu = view_menu.addMenu("Theme")
         self.theme_actions: dict[str, QAction] = {}
         for name in themes():
-            action = self.theme_menu.addAction(name.capitalize())
+            label = name
+            if name == "win98":
+                label = "Win98"
+            elif name.startswith("win98"):
+                label = "Win98 " + name.split("-", 1)[1].title()
+            else:
+                label = name.capitalize()
+            action = self.theme_menu.addAction(label)
             action.setCheckable(True)
             self.theme_group.addAction(action)
             self.theme_actions[name] = action
