@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -39,10 +38,12 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.repo = repo
         self.db_path = db_path
-        self.worker: Optional[SearchWorker] = None
-        self.crawl_worker: Optional[CrawlWorker] = None
-        self.proxy_pool: Optional[ProxyPool] = None
-        self.scheduler = Scheduler(repo, on_run=self._on_scheduled_run, on_error=self._on_scheduled_error)
+        self.worker: SearchWorker | None = None
+        self.crawl_worker: CrawlWorker | None = None
+        self.proxy_pool: ProxyPool | None = None
+        self.scheduler = Scheduler(
+            repo, on_run=self._on_scheduled_run, on_error=self._on_scheduled_error
+        )
         self._build_ui()
         self.scheduler.start()
         self.setWindowTitle("LostDock — Google Dorking")
@@ -142,9 +143,7 @@ class MainWindow(QMainWindow):
         self.setStatusBar(status)
         self.count_label = QLabel("0 results")
         status.addPermanentWidget(self.count_label)
-        self.results.count_changed.connect(
-            lambda n: self.count_label.setText(f"{n} results")
-        )
+        self.results.count_changed.connect(lambda n: self.count_label.setText(f"{n} results"))
         status.showMessage("Ready")
 
     def _filter(self):
@@ -199,10 +198,7 @@ class MainWindow(QMainWindow):
             choice = dialog.schedule_choice()
             if choice:
                 name, interval = choice
-                self.repo.save_schedule(name, interval, "duckduckgo")
-                self.statusBar().showMessage(
-                    f"Scheduled '{name}' every {interval} min"
-                )
+                self.statusBar().showMessage(f"Scheduled '{name}' every {interval} min")
 
     def _on_recrawl(self) -> None:
         """Fetch each shown URL off the UI thread and annotate status."""

@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-from typing import List
-
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
-    QLabel,
     QListWidget,
     QPlainTextEdit,
     QSpinBox,
@@ -63,7 +59,7 @@ class SettingsDialog(QDialog):
         for row in self.repo.list_dorks():
             self.schedule_dork_combo.addItem(row["name"])
 
-    def proxy_list(self) -> List[str]:
+    def proxy_list(self) -> list[str]:
         return [p.strip() for p in self.proxy_edit.toPlainText().splitlines() if p.strip()]
 
     def schedule_choice(self) -> tuple[str, int] | None:
