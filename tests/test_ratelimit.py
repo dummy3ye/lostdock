@@ -20,7 +20,7 @@ def test_rate_limiter_parallel_safety():
     def worker():
         try:
             limiter.acquire()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             errors.append(exc)
 
     threads = [threading.Thread(target=worker) for _ in range(8)]

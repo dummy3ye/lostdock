@@ -5,7 +5,6 @@ from __future__ import annotations
 import random
 import threading
 import time
-from typing import Optional
 
 
 class RateLimiter:
@@ -41,11 +40,11 @@ class RateLimiter:
                 self._refill()
                 if self._tokens >= 1.0:
                     self._tokens -= 1.0
-                    break
+                    return
                 wait = (1.0 - self._tokens) / self.rate
-            time.sleep(wait)
             if self.jitter > 0:
-                time.sleep(random.uniform(0, self.jitter))
+                wait += random.uniform(0, self.jitter)
+            time.sleep(wait)
 
 
 def default_limiter() -> RateLimiter:
