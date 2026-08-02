@@ -12,22 +12,66 @@
 #   ./scripts/dlfy --art-only    # just the pretty picture
 #   ./scripts/dlfy --width=40    # art width in terminal columns
 #
+# Environment:
+#   DLFY_THEME=light|dark        # force a theme (default: auto-detect)
+#   DLFY_ACCENT=#hex             # override the art accent color
+#
 # Dependencies (optional): chafa, magick. Everything degrades gracefully.
 
 set -euo pipefail
 
-# --- colors (Catppuccin Mocha, matching the app's palette) ----------------
-C_BLUE='\033[38;2;137;180;250m'
-C_MAUVE='\033[38;2;203;166;247m'
-C_TEAL='\033[38;2;148;226;213m'
-C_PINK='\033[38;2;245;194;231m'
-C_PEACH='\033[38;2;250;179;135m'
-C_YELLOW='\033[38;2;249;226;175m'
-C_GREEN='\033[38;2;166;227;161m'
-C_TEXT='\033[38;2;205;214;244m'
-C_SUBTLE='\033[38;2;147;153;178m'
+# --- colors ---------------------------------------------------------------
+# Use the terminal's native ANSI 16-color slots so the card follows the
+# user's theme (dracula, solarized, catppuccin, whatever). Override the
+# accent with DLFY_THEME=light|dark (or DLFY_ACCENT=<hex>).
+C_BLUE='\033[34m'
+C_MAUVE='\033[35m'
+C_TEAL='\033[36m'
+C_PINK='\033[95m'
+C_PEACH='\033[33m'
+C_YELLOW='\033[93m'
+C_GREEN='\033[32m'
+C_TEXT='\033[37m'
+C_SUBTLE='\033[90m'
 C_BOLD='\033[1m'
 C_RESET='\033[0m'
+
+# Guess the terminal background: dark or light. Used only to pick an art
+# accent that stays visible on either theme; falls back to dark.
+detect_theme() {
+    if [[ -n "${DLFY_THEME:-}" ]]; then
+        echo "$DLFY_THEME"
+        return
+    fi
+    if [[ -n "${COLORFGBG:-}" ]]; then
+        if [[ "${COLORFGBG#*;}" -lt 8 ]]; then echo light; else echo dark; fi
+        return
+    fi
+    if [[ -t 1 ]]; then
+        local resp
+        printf '\033]11;?\033\\'
+        IFS= read -r -d '\\' -t 0.2 resp 2>/dev/null || true
+        if [[ "$resp" =~ rgb:([0-9a-fA-F]{4}) ]]; then
+            local r g b
+            r=$((16#${BASH_REMATCH[1]}))
+            b=$((16#${BASH_REMATCH[3]}))
+            g=$((16#${BASH_REMATCH[2]}))
+            if (( (r * 299 + g * 587 + b * 114) / 1000 > 130 )); then
+                echo light
+            else
+                echo dark
+            fi
+            return
+        fi
+    fi
+    echo dark
+}
+THEME="$(detect_theme)"
+if [[ "$THEME" == "light" ]]; then
+    ART_ACCENT="${DLFY_ACCENT:-#1f5bb0}"
+else
+    ART_ACCENT="${DLFY_ACCENT:-#b4befe}"
+fi
 
 ART_W=48
 NO_ART=0
@@ -101,9 +145,7 @@ if [[ "$NO_ART" -eq 0 ]] && command -v chafa >/dev/null 2>&1; then
             TMP_LOGO="$(mktemp -t dlfy-XXXXXX.png)"
             trap 'rm -f "$TMP_LOGO"' EXIT
             magick "$LOGO" -fuzz 4% -transparent white \
-                -fill '#b4befe' -colorize 100 \
-                -fill '#89b4fa' -opaque '#b4befe' \
-                -fill '#f5e0dc' -colorize 8 \
+                -fill "$ART_ACCENT" -colorize 100 \
                 "$TMP_LOGO" 2>/dev/null
             mapfile -t ART < <(render_art "$TMP_LOGO")
         else
