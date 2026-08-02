@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -32,7 +33,7 @@ from ..services.scheduler import Scheduler
 from .dork_builder import DorkBuilder
 from .results_view import ResultsView
 from .settings import SettingsDialog
-from .theme import stylesheet
+from .theme import stylesheet, themes
 from .worker import CrawlWorker, SearchWorker, run_crawl, run_search
 
 
@@ -48,7 +49,7 @@ class MainWindow(QMainWindow):
             repo, on_run=self._on_scheduled_run, on_error=self._on_scheduled_error
         )
         self._build_ui()
-        self._apply_theme(dark=True)
+        self._apply_theme("dark")
         self.scheduler.start()
         self.setWindowTitle("LostDock — Google Dorking")
         self.resize(1180, 760)
@@ -146,20 +147,23 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction("&Quit", self.close)
         view_menu = menu.addMenu("&View")
-        self.dark_action = view_menu.addAction("&Dark Mode")
-        self.dark_action.setCheckable(True)
-        self.dark_action.setChecked(True)
-        self.dark_action.triggered.connect(self._on_theme_toggle)
+        self.theme_group = QActionGroup(self)
+        self.theme_group.setExclusive(True)
+        self.theme_menu = view_menu.addMenu("Theme")
+        self.theme_actions: dict[str, QAction] = {}
+        for name in themes():
+            action = self.theme_menu.addAction(name.capitalize())
+            action.setCheckable(True)
+            self.theme_group.addAction(action)
+            self.theme_actions[name] = action
+            action.triggered.connect(lambda checked, t=name: self._apply_theme(t))
         tools_menu = menu.addMenu("&Tools")
         tools_menu.addAction("Settings...", self._on_settings)
         tools_menu.addAction("Re-check URLs", self._on_recrawl)
 
-    def _apply_theme(self, dark: bool) -> None:
-        QApplication.instance().setStyleSheet(stylesheet(dark))
-        self.dark_action.setChecked(dark)
-
-    def _on_theme_toggle(self, checked: bool) -> None:
-        self._apply_theme(checked)
+    def _apply_theme(self, name: str) -> None:
+        QApplication.instance().setStyleSheet(stylesheet(name))
+        self.theme_actions[name].setChecked(True)
 
     def _build_status(self) -> None:
         status = QStatusBar()

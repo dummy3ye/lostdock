@@ -2,27 +2,34 @@
 
 from __future__ import annotations
 
-_DARK = {
-    "window": "#1e1e2e",
-    "base": "#313244",
-    "alt": "#45475a",
-    "text": "#cdd6f4",
-    "muted": "#a6adc8",
-    "accent": "#89b4fa",
-    "border": "#45475a",
-    "disabled": "#6c7086",
+from typing import ClassVar
+
+_THEMES: ClassVar[dict[str, dict[str, str]]] = {
+    "dark": {
+        "window": "#1e1e2e",
+        "base": "#313244",
+        "alt": "#45475a",
+        "text": "#cdd6f4",
+        "muted": "#a6adc8",
+        "accent": "#89b4fa",
+        "border": "#45475a",
+        "disabled": "#6c7086",
+    },
+    "light": {
+        "window": "#f5f5f7",
+        "base": "#ffffff",
+        "alt": "#ececf0",
+        "text": "#1e1e2e",
+        "muted": "#585860",
+        "accent": "#1f5bb0",
+        "border": "#d4d4da",
+        "disabled": "#9a9aa2",
+    },
 }
 
-_LIGHT = {
-    "window": "#f5f5f7",
-    "base": "#ffffff",
-    "alt": "#ececf0",
-    "text": "#1e1e2e",
-    "muted": "#585860",
-    "accent": "#1f5bb0",
-    "border": "#d4d4da",
-    "disabled": "#9a9aa2",
-}
+
+def themes() -> tuple[str, ...]:
+    return tuple(_THEMES)
 
 
 def _stylesheet(c) -> str:
@@ -149,5 +156,9 @@ QSplitter::handle {{
 """
 
 
-def stylesheet(dark: bool) -> str:
-    return _stylesheet(_DARK if dark else _LIGHT)
+def stylesheet(name: str) -> str:
+    try:
+        palette = _THEMES[name]
+    except KeyError:
+        raise ValueError(f"unknown theme: {name!r} (available: {', '.join(_THEMES)})") from None
+    return _stylesheet(palette)
