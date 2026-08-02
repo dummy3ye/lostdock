@@ -143,3 +143,41 @@ def run_crawl(
     worker._thread = thread  # keep reference
     thread.start()
     return worker
+
+
+class UpdateCheckWorker(QObject):
+    """Checks the latest GitHub release tag off the UI thread."""
+
+    latest = Signal(str)  # latest tag ("" on failure)
+
+    def __init__(self, repo: str) -> None:
+        super().__init__()
+        self.repo = repo
+
+    def run(self) -> None:
+        import json
+        import urllib.request
+
+        try:
+            with urllib.request.urlopen(
+                f"https://api.github.com/repos/{self.repo}/releases/latest",
+                timeout=10,
+            ) as resp:
+                data = json.load(resp)
+                self.latest.emit(data.get("tag_name", "").lstrip("v"))
+        except Exception:
+            self.latest.emit("")
+
+
+def run_update_check(repo: str) -> UpdateCheckWorker:
+    """Start an update check in a new QThread; returns the worker."""
+    thread = QThread()
+    worker = UpdateCheckWorker(repo)
+    worker.moveToThread(thread)
+    thread.started.connect(worker.run)
+    worker.latest.connect(thread.quit)
+    worker.latest.connect(worker.deleteLater)
+    thread.finished.connect(thread.deleteLater)
+    worker._thread = thread  # keep reference
+    thread.start()
+    return worker

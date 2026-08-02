@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .. import __version__
 from ..adapters import ENGINES, MultiEngine
 from ..core.models import SearchResult
 from ..core.proxy import ProxyPool
@@ -34,7 +35,13 @@ from .dork_builder import DorkBuilder
 from .results_view import ResultsView
 from .settings import SettingsDialog
 from .theme import stylesheet, themes
-from .worker import CrawlWorker, SearchWorker, run_crawl, run_search
+from .worker import (
+    CrawlWorker,
+    SearchWorker,
+    run_crawl,
+    run_search,
+    run_update_check,
+)
 
 PROXIES_SETTING = "proxies"
 HTTP_ENGINES = ("google", "duckduckgo", "bing")
@@ -148,10 +155,28 @@ class MainWindow(QMainWindow):
     def _build_menu(self) -> None:
         menu = self.menuBar()
         file_menu = menu.addMenu("&File")
+        file_menu.addAction("Save Dork", self._on_save_dork, "Ctrl+S")
+        file_menu.addAction("Load Dork", self._on_load_dork, "Ctrl+O")
+        file_menu.addAction("Delete Dork", self._on_delete_dork, "Del")
+        file_menu.addSeparator()
         file_menu.addAction("Export Results...", self._on_export)
         file_menu.addSeparator()
-        file_menu.addAction("&Quit", self.close)
+        file_menu.addAction("&Quit", self.close, "Ctrl+Q")
+        edit_menu = menu.addMenu("&Edit")
+        edit_menu.addAction("Undo", self._undo, "Ctrl+Z")
+        edit_menu.addAction("Redo", self._redo, "Ctrl+Shift+Z")
+        edit_menu.addSeparator()
+        edit_menu.addAction("Cut", self._cut, "Ctrl+X")
+        edit_menu.addAction("Copy", self._copy, "Ctrl+C")
+        edit_menu.addAction("Paste", self._paste, "Ctrl+V")
+        edit_menu.addAction("Select All", self._select_all, "Ctrl+A")
+        edit_menu.addSeparator()
+        edit_menu.addAction("Find in Results...", self._on_find_in_results, "Ctrl+F")
         view_menu = menu.addMenu("&View")
+        self.statusbar_action = view_menu.addAction("Toggle Status Bar")
+        self.statusbar_action.setCheckable(True)
+        self.statusbar_action.setChecked(True)
+        self.statusbar_action.toggled.connect(lambda checked: self.statusBar().setVisible(checked))
         self.theme_group = QActionGroup(self)
         self.theme_group.setExclusive(True)
         self.theme_menu = view_menu.addMenu("Theme")
@@ -170,8 +195,157 @@ class MainWindow(QMainWindow):
             self.theme_actions[name] = action
             action.triggered.connect(lambda checked, t=name: self._apply_theme(t))
         tools_menu = menu.addMenu("&Tools")
-        tools_menu.addAction("Settings...", self._on_settings)
-        tools_menu.addAction("Re-check URLs", self._on_recrawl)
+        tools_menu.addAction("Settings...", self._on_settings, "Ctrl+,")
+        tools_menu.addAction("Re-check URLs", self._on_recrawl, "Ctrl+R")
+        help_menu = menu.addMenu("&Help")
+        help_menu.addAction("Help with Dorking...", self._on_dork_help)
+        help_menu.addAction("About LostDock", self._on_about)
+        help_menu.addAction("Report Issue...", self._on_report_issue)
+        help_menu.addAction("Check for Updates...", self._on_check_updates)
+
+    def _edit_widget(self):
+        return self.focusWidget() if self.focusWidget() is not None else None
+
+    def _undo(self) -> None:
+        widget = self._edit_widget()
+        if widget is not None and hasattr(widget, "undo"):
+            widget.undo()
+
+    def _redo(self) -> None:
+        widget = self._edit_widget()
+        if widget is not None and hasattr(widget, "redo"):
+            widget.redo()
+
+    def _cut(self) -> None:
+        widget = self._edit_widget()
+        if widget is not None and hasattr(widget, "cut"):
+            widget.cut()
+
+    def _copy(self) -> None:
+        widget = self._edit_widget()
+        if widget is not None and hasattr(widget, "copy"):
+            widget.copy()
+
+    def _paste(self) -> None:
+        widget = self._edit_widget()
+        if widget is not None and hasattr(widget, "paste"):
+            widget.paste()
+
+    def _select_all(self) -> None:
+        widget = self._edit_widget()
+        if widget is not None and hasattr(widget, "selectAll"):
+            widget.selectAll()
+
+    def _on_find_in_results(self) -> None:
+        from PySide6.QtWidgets import QInputDialog
+
+        pattern, ok = QInputDialog.getText(self, "Find in Results", "Pattern (regex):")
+        if ok:
+            self._on_highlight_changed(pattern)
+
+    def _on_dork_help(self) -> None:
+        from PySide6.QtWidgets import QDialog, QPlainTextEdit, QVBoxLayout
+
+        text = """
+DORKING FIELD GUIDE
+===================
+
+KEYWORDS
+  Primary search terms. e.g.  login password
+  These are the words you're hunting for on pages.
+
+DORK NAME
+  A name to save this dork under (used by Save/Load).
+
+EXACT PHRASE
+  Wraps the text in quotes to match the literal phrase.
+  "bank login" -> only pages containing "bank login" in order.
+
+EXCLUDE (-)
+  Comma-separated terms to EXCLUDE from results.
+  Each becomes a "-term". e.g.  wiki, stackoverflow
+  -> -wiki -stackoverflow
+
+MUST HAVE (AND)
+  Comma-separated terms that must ALL appear.
+  e.g. admin, password -> admin password (implicit AND).
+
+ANY OF (OR)
+  Comma-separated terms; results matching ANY of them.
+  e.g. php, asp -> (php OR asp)
+
+SITES (site:)
+  Comma-separated domains to limit results to.
+  e.g. example.com, *.org -> site:example.com site:*.org
+
+inurl:
+  Only results whose URL contains this text.
+  e.g. inurl:admin
+
+intitle:
+  Only results whose page <title> contains this text.
+
+intext:
+  Only results whose page body contains this text.
+
+DATES (after: / before:)
+  Restrict results by publish date. Format YYYY-MM-DD.
+
+FILE TYPES
+  Checkboxes that emit filetype: filters (doc, pdf, xls, ...).
+  "Select All" picks every type in that category.
+
+----- RESULT FILTER (applied on export) -----
+ALLOW ONLY   keep only these domains
+BLOCK        exclude these domains
+URL PATTERN  keep URLs matching this regex
+HIGHLIGHT    regex; rows matching get highlighted in the table
+""".strip().lstrip("\n")
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Help with Dorking")
+        dialog.resize(760, 620)
+        layout = QVBoxLayout(dialog)
+        view = QPlainTextEdit(text)
+        view.setReadOnly(True)
+        layout.addWidget(view)
+        dialog.exec()
+        dialog.deleteLater()
+
+    def _on_about(self) -> None:
+        QMessageBox.about(
+            self,
+            "About LostDock",
+            f"<h3>LostDock</h3><p>Cross-platform Google dorking tool.</p>"
+            f"<p>Version {__version__}</p>",
+        )
+
+    def _on_report_issue(self) -> None:
+        import webbrowser
+
+        webbrowser.open("https://github.com/dummy3ye/lostdock/issues/new")
+
+    def _on_check_updates(self) -> None:
+        worker = run_update_check("dummy3ye/lostdock")
+        worker.latest.connect(self._on_update_result)
+
+    def _on_update_result(self, latest: str) -> None:
+        current = __version__
+        if not latest:
+            QMessageBox.information(self, "Check for Updates", "Could not check for updates.")
+            return
+        if latest == current:
+            QMessageBox.information(self, "Check for Updates", f"You are up to date (v{current}).")
+        else:
+            ret = QMessageBox.question(
+                self,
+                "Update Available",
+                f"Version {latest} is available (you have {current}). Open the releases page?",
+            )
+            if ret == QMessageBox.Yes:
+                import webbrowser
+
+                webbrowser.open("https://github.com/dummy3ye/lostdock/releases/latest")
 
     def _apply_theme(self, name: str) -> None:
         QApplication.instance().setStyleSheet(stylesheet(name))
