@@ -172,8 +172,6 @@ TAGLINES=(
 )
 TAGLINE="${TAGLINES[$((RANDOM % ${#TAGLINES[@]}))]}"
 
-printf '%b' "${C_BOLD}${C_BLUE}═ lost dock ═${C_RESET} ${C_SUBTLE}the repo card with a peg leg${C_RESET}\n\n"
-
 if [[ "${#ART[@]}" -gt 0 ]]; then
     trim_art_edges
     rows="${#panel[@]}"
