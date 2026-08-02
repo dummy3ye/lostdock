@@ -2,8 +2,8 @@ import subprocess
 
 import pytest
 
-from lostdock.adapters.chrome import ChromeEngine, _find_chrome
 from lostdock.adapters.base import EngineError
+from lostdock.adapters.chrome import ChromeEngine, _find_chrome
 
 
 def test_find_chrome_returns_none_when_absent(monkeypatch):
@@ -44,7 +44,11 @@ def test_search_respects_per_page_and_hl(monkeypatch):
 
 
 def test_search_raises_when_no_browser(monkeypatch):
-    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: (_ for _ in ()).throw(OSError("no such file")))
+    monkeypatch.setattr(
+        subprocess,
+        "Popen",
+        lambda *a, **k: (_ for _ in ()).throw(OSError("no such file")),
+    )
     engine = ChromeEngine(browser="/nonexistent/chrome")
     with pytest.raises(EngineError, match="Failed to launch Chrome"):
         engine.search("q", pages=1)

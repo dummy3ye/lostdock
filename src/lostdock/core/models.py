@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
-from typing import List, Optional
+from dataclasses import asdict, dataclass, field
 
 
 @dataclass
@@ -12,11 +11,11 @@ class Dork:
 
     keywords: str = ""
     exact_phrase: str = ""
-    exclude_terms: List[str] = field(default_factory=list)
-    required_terms: List[str] = field(default_factory=list)  # AND terms
-    any_terms: List[str] = field(default_factory=list)       # OR terms
-    sites: List[str] = field(default_factory=list)
-    file_types: List[str] = field(default_factory=list)
+    exclude_terms: list[str] = field(default_factory=list)
+    required_terms: list[str] = field(default_factory=list)  # AND terms
+    any_terms: list[str] = field(default_factory=list)  # OR terms
+    sites: list[str] = field(default_factory=list)
+    file_types: list[str] = field(default_factory=list)
     in_url: str = ""
     in_title: str = ""
     in_text: str = ""
@@ -29,7 +28,7 @@ class Dork:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Dork":
+    def from_dict(cls, data: dict) -> Dork:
         known = {f: data[f] for f in cls.__dataclass_fields__ if f in data}
         return cls(**known)
 

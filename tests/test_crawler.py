@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from lostdock.services.crawler import crawl_url
 
 
@@ -16,12 +18,11 @@ def test_crawl_url_failure_never_raises():
 
 
 def test_crawl_report_carries_original_url_on_redirect(monkeypatch):
-    from lostdock.services import crawler
 
     class FakeResponse:
         url = "https://final.example/landed"
         status_code = 200
-        headers = {"content-type": "text/html"}
+        headers: ClassVar[dict] = {"content-type": "text/html"}
         text = "<html><title>Landed</title></html>"
         content = b"<html><body>hi</body></html>"
 

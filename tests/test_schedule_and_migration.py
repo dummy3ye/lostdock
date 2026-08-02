@@ -1,5 +1,3 @@
-import time
-
 from lostdock.core.models import Dork
 from lostdock.services.repository import Repository
 
@@ -49,7 +47,9 @@ def test_schedule_due_after_bump(tmp_path):
     # force it due
     import datetime
 
-    past = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=5)).isoformat()
+    past = (
+        datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=5)
+    ).isoformat()
     with repo._lock:
         repo._conn.execute("UPDATE schedules SET next_run_at = ?", (past,))
         repo._conn.commit()
@@ -62,15 +62,22 @@ def test_schedule_due_after_bump(tmp_path):
 def test_update_crawl(tmp_path):
     repo = Repository(tmp_path / "c.db")
     job = repo.create_job("q", "google")
-    repo.add_results(job, [__import__("lostdock.core.models", fromlist=["SearchResult"]).SearchResult(
-        title="t", url="https://x.example", snippet="s", position=1
-    )])
+    repo.add_results(
+        job,
+        [
+            __import__("lostdock.core.models", fromlist=["SearchResult"]).SearchResult(
+                title="t", url="https://x.example", snippet="s", position=1
+            )
+        ],
+    )
     row = repo.urls_in_job(job)[0]
     repo.update_crawl(row["id"], 200, "Live Page", "text/html")
-    cols = {r[1]: r[2] for r in repo._conn.execute("SELECT * FROM results")}
     # verify via row content
     with repo._lock:
-        r = repo._conn.execute("SELECT status_code, http_title, content_type FROM results WHERE id=?", (row["id"],)).fetchone()
+        r = repo._conn.execute(
+            "SELECT status_code, http_title, content_type FROM results WHERE id=?",
+            (row["id"],),
+        ).fetchone()
     assert r["status_code"] == 200
     assert r["http_title"] == "Live Page"
     assert r["content_type"] == "text/html"
@@ -82,10 +89,13 @@ def test_update_crawl_by_url(tmp_path):
 
     repo = Repository(tmp_path / "c2.db")
     job = repo.create_job("q", "google")
-    repo.add_results(job, [
-        SearchResult(title="t", url="https://y.example", snippet="s", position=1),
-        SearchResult(title="t2", url="https://y.example", snippet="s", position=2),
-    ])
+    repo.add_results(
+        job,
+        [
+            SearchResult(title="t", url="https://y.example", snippet="s", position=1),
+            SearchResult(title="t2", url="https://y.example", snippet="s", position=2),
+        ],
+    )
     repo.update_crawl_by_url("https://y.example", 404, "Gone", "text/html")
     with repo._lock:
         rows = repo._conn.execute(

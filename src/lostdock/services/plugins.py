@@ -6,7 +6,6 @@ import importlib.util
 import logging
 import sys
 from pathlib import Path
-from typing import Callable, List
 
 log = logging.getLogger(__name__)
 
@@ -28,18 +27,18 @@ class Plugin:
         if fn is not None:
             try:
                 return fn(*args, **kwargs)
-            except Exception as exc:  # noqa: BLE001
+            except Exception:
                 log.exception("Plugin %s hook %s failed", self.name, hook)
-                raise exc
+                raise
         return None
 
     def has(self, hook: str) -> bool:
         return callable(getattr(self._module, hook, None))
 
 
-def discover_plugins(paths: List[Path]) -> List[Plugin]:
+def discover_plugins(paths: list[Path]) -> list[Plugin]:
     """Load all *.py modules from the given directories (non-recursive)."""
-    plugins: List[Plugin] = []
+    plugins: list[Plugin] = []
     for directory in paths:
         if not directory.is_dir():
             continue
@@ -57,6 +56,6 @@ def discover_plugins(paths: List[Path]) -> List[Plugin]:
                 name = getattr(module, "NAME", file.stem)
                 plugins.append(Plugin(name, module))
                 log.info("Loaded plugin: %s", name)
-            except Exception as exc:  # noqa: BLE001
+            except Exception:
                 log.exception("Failed to load plugin %s", file)
     return plugins

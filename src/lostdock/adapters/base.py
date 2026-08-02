@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
 
 from ..core.models import SearchResult
 
@@ -31,8 +30,8 @@ class SearchEngine(ABC):
         query: str,
         pages: int = 1,
         per_page: int = 10,
-        stop_at: Optional[int] = None,
-    ) -> List[SearchResult]:
+        stop_at: int | None = None,
+    ) -> list[SearchResult]:
         """Execute a search and return structured results.
 
         pages: number of result pages to fetch

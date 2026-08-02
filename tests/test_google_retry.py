@@ -1,5 +1,5 @@
-from lostdock.adapters.google import GoogleEngine, _google_429_message
 from lostdock.adapters.base import RateLimitedError
+from lostdock.adapters.google import GoogleEngine, _google_429_message
 
 
 class FakeResponse:
@@ -28,14 +28,16 @@ class FakeSession:
 
 
 def test_429_retries_then_succeeds(monkeypatch):
-    monkeypatch.setattr(
-        "lostdock.adapters.google.random.uniform", lambda a, b: b
-    )
-    monkeypatch.setattr(
-        "lostdock.adapters.google.time.sleep", lambda s: None
-    )
+    monkeypatch.setattr("lostdock.adapters.google.random.uniform", lambda a, b: b)
+    monkeypatch.setattr("lostdock.adapters.google.time.sleep", lambda s: None)
     engine = GoogleEngine(
-        session=FakeSession([FakeResponse(429), FakeResponse(429), FakeResponse(200, "<html>ok</html>")]),
+        session=FakeSession(
+            [
+                FakeResponse(429),
+                FakeResponse(429),
+                FakeResponse(200, "<html>ok</html>"),
+            ]
+        ),
         max_retries=3,
     )
     html = engine._fetch_page("test", 0, 10)
@@ -45,14 +47,17 @@ def test_429_retries_then_succeeds(monkeypatch):
 
 
 def test_429_gives_up_after_retries(monkeypatch):
-    monkeypatch.setattr(
-        "lostdock.adapters.google.random.uniform", lambda a, b: b
-    )
-    monkeypatch.setattr(
-        "lostdock.adapters.google.time.sleep", lambda s: None
-    )
+    monkeypatch.setattr("lostdock.adapters.google.random.uniform", lambda a, b: b)
+    monkeypatch.setattr("lostdock.adapters.google.time.sleep", lambda s: None)
     engine = GoogleEngine(
-        session=FakeSession([FakeResponse(429), FakeResponse(429), FakeResponse(429), FakeResponse(429)]),
+        session=FakeSession(
+            [
+                FakeResponse(429),
+                FakeResponse(429),
+                FakeResponse(429),
+                FakeResponse(429),
+            ]
+        ),
         max_retries=2,
     )
     try:
@@ -67,11 +72,14 @@ def test_429_gives_up_after_retries(monkeypatch):
 def test_honors_retry_after_header(monkeypatch):
     sleeps = []
     monkeypatch.setattr("lostdock.adapters.google.time.sleep", lambda s: sleeps.append(s))
-    monkeypatch.setattr(
-        "lostdock.adapters.google.random.uniform", lambda a, b: b
-    )
+    monkeypatch.setattr("lostdock.adapters.google.random.uniform", lambda a, b: b)
     engine = GoogleEngine(
-        session=FakeSession([FakeResponse(429, headers={"Retry-After": "2"}), FakeResponse(200, "<html>ok</html>")]),
+        session=FakeSession(
+            [
+                FakeResponse(429, headers={"Retry-After": "2"}),
+                FakeResponse(200, "<html>ok</html>"),
+            ]
+        ),
         max_retries=1,
     )
     engine._fetch_page("test", 0, 10)

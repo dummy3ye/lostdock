@@ -1,9 +1,9 @@
-from lostdock.core.models import Dork, SearchResult
-from lostdock.services.repository import Repository
-from lostdock.services.exporter import export_results
-
-import json
 import csv
+import json
+
+from lostdock.core.models import Dork, SearchResult
+from lostdock.services.exporter import export_results
+from lostdock.services.repository import Repository
 
 
 def test_repository_roundtrip(tmp_path):

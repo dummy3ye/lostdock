@@ -1,5 +1,5 @@
-from lostdock.services.filter import ResultFilter
 from lostdock.core.models import SearchResult
+from lostdock.services.filter import ResultFilter
 
 
 def _r(url):

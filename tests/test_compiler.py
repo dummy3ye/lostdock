@@ -1,5 +1,5 @@
-from lostdock.core.models import Dork
 from lostdock.core.compiler import compile_dork
+from lostdock.core.models import Dork
 
 
 def test_basic_keywords():

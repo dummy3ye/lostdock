@@ -1,10 +1,11 @@
-from lostdock.adapters.duckduckgo import DuckDuckGoEngine
 from lostdock.adapters.bing import BingEngine
+from lostdock.adapters.duckduckgo import DuckDuckGoEngine
 
 DDG_HTML = """
 <html><body>
 <div class="result">
-  <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Ffile.pdf">Example File</a>
+  <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Ffile.pdf">
+    Example File</a>
   <a class="result__snippet" href="#">Some snippet about the file.</a>
 </div>
 <div class="result">

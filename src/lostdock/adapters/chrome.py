@@ -18,7 +18,6 @@ import os
 import shutil
 import subprocess
 import sys
-from typing import List, Optional
 from urllib.parse import urlencode
 
 from ..core.models import SearchResult
@@ -28,7 +27,7 @@ from .base import EngineError, SearchEngine
 log = logging.getLogger(__name__)
 
 
-def _find_chrome() -> Optional[str]:
+def _find_chrome() -> str | None:
     """Locate a Chrome/Chromium binary (or 'open' on macOS)."""
     if sys.platform == "darwin":
         return "open"
@@ -64,9 +63,9 @@ class ChromeEngine(SearchEngine):
 
     def __init__(
         self,
-        limiter: Optional[RateLimiter] = None,
+        limiter: RateLimiter | None = None,
         proxies=None,
-        browser: Optional[str] = None,
+        browser: str | None = None,
     ) -> None:
         self.limiter = limiter or default_limiter()
         self.proxies = proxies
@@ -92,8 +91,8 @@ class ChromeEngine(SearchEngine):
         query: str,
         pages: int = 1,
         per_page: int = 10,
-        stop_at: Optional[int] = None,
-    ) -> List[SearchResult]:
+        stop_at: int | None = None,
+    ) -> list[SearchResult]:
         self.limiter.acquire()
         params = {"q": query, "num": per_page, "hl": "en"}
         url = "https://www.google.com/search?" + urlencode(params)

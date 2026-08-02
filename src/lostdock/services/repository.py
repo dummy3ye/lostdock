@@ -5,9 +5,8 @@ from __future__ import annotations
 import sqlite3
 import threading
 from pathlib import Path
-from typing import Iterator, List, Optional
 
-from ..core.models import SearchResult
+from ..core.models import Dork, SearchResult
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS jobs (
@@ -92,16 +91,12 @@ class Repository:
 
     def finish_job(self, job_id: int) -> None:
         with self._lock:
-            self._conn.execute(
-                "UPDATE jobs SET status = 'done' WHERE id = ?", (job_id,)
-            )
+            self._conn.execute("UPDATE jobs SET status = 'done' WHERE id = ?", (job_id,))
             self._conn.commit()
 
     def fail_job(self, job_id: int, status: str = "failed") -> None:
         with self._lock:
-            self._conn.execute(
-                "UPDATE jobs SET status = ? WHERE id = ?", (status, job_id)
-            )
+            self._conn.execute("UPDATE jobs SET status = ? WHERE id = ?", (status, job_id))
             self._conn.commit()
 
     def add_result(self, job_id: int, result: SearchResult) -> None:
@@ -122,7 +117,7 @@ class Repository:
             )
             self._conn.commit()
 
-    def add_results(self, job_id: int, results: List[SearchResult]) -> None:
+    def add_results(self, job_id: int, results: list[SearchResult]) -> None:
         with self._lock:
             self._conn.executemany(
                 """INSERT INTO results
@@ -143,7 +138,7 @@ class Repository:
             )
             self._conn.commit()
 
-    def results_for_job(self, job_id: int) -> List[SearchResult]:
+    def results_for_job(self, job_id: int) -> list[SearchResult]:
         with self._lock:
             rows = self._conn.execute(
                 "SELECT * FROM results WHERE job_id = ? ORDER BY position",
@@ -181,14 +176,14 @@ class Repository:
             self._conn.commit()
             return len(to_delete)
 
-    def recent_jobs(self, limit: int = 20) -> List[dict]:
+    def recent_jobs(self, limit: int = 20) -> list[dict]:
         with self._lock:
             rows = self._conn.execute(
                 "SELECT * FROM jobs ORDER BY id DESC LIMIT ?", (limit,)
             ).fetchall()
         return [dict(r) for r in rows]
 
-    def save_dork(self, name: str, dork: "Dork") -> None:
+    def save_dork(self, name: str, dork: Dork) -> None:
         import json
 
         with self._lock:
@@ -198,17 +193,15 @@ class Repository:
             )
             self._conn.commit()
 
-    def list_dorks(self) -> List[dict]:
+    def list_dorks(self) -> list[dict]:
         with self._lock:
             rows = self._conn.execute(
                 "SELECT id, name, created_at FROM saved_dorks ORDER BY name"
             ).fetchall()
         return [dict(r) for r in rows]
 
-    def load_dork(self, name: str) -> Optional["Dork"]:
+    def load_dork(self, name: str) -> Dork | None:
         import json
-
-        from ..core.models import Dork
 
         with self._lock:
             row = self._conn.execute(
@@ -223,7 +216,7 @@ class Repository:
             self._conn.execute("DELETE FROM saved_dorks WHERE name = ?", (name,))
             self._conn.commit()
 
-    def urls_in_job(self, job_id: int) -> List[dict]:
+    def urls_in_job(self, job_id: int) -> list[dict]:
         """Return [{id, url}] for a job, for re-crawling."""
         with self._lock:
             rows = self._conn.execute(
@@ -236,18 +229,22 @@ class Repository:
         with self._lock:
             self._conn.execute(
                 """UPDATE results
-                   SET status_code = ?, http_title = ?, content_type = ?, checked_at = datetime('now')
+                   SET status_code = ?, http_title = ?, content_type = ?,
+                       checked_at = datetime('now')
                    WHERE id = ?""",
                 (status_code, http_title, content_type, result_id),
             )
             self._conn.commit()
 
-    def update_crawl_by_url(self, url: str, status_code, http_title: str, content_type: str) -> None:
+    def update_crawl_by_url(
+        self, url: str, status_code, http_title: str, content_type: str
+    ) -> None:
         """Update crawl info for every stored result matching a URL."""
         with self._lock:
             self._conn.execute(
                 """UPDATE results
-                   SET status_code = ?, http_title = ?, content_type = ?, checked_at = datetime('now')
+                   SET status_code = ?, http_title = ?, content_type = ?,
+                       checked_at = datetime('now')
                    WHERE url = ?""",
                 (status_code, http_title, content_type, url),
             )
@@ -257,9 +254,10 @@ class Repository:
     def save_schedule(self, dork_name: str, interval_minutes: int, engine: str) -> None:
         import datetime
 
-        next_run = (
-            datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=interval_minutes)
-        ).isoformat()
+        next_run = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+            minutes=interval_minutes
+        )
+        next_run = next_run.isoformat()
         with self._lock:
             self._conn.execute(
                 """INSERT OR REPLACE INTO schedules
@@ -269,14 +267,12 @@ class Repository:
             )
             self._conn.commit()
 
-    def list_schedules(self) -> List[dict]:
+    def list_schedules(self) -> list[dict]:
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT * FROM schedules ORDER BY dork_name"
-            ).fetchall()
+            rows = self._conn.execute("SELECT * FROM schedules ORDER BY dork_name").fetchall()
         return [dict(r) for r in rows]
 
-    def due_schedules(self) -> List[dict]:
+    def due_schedules(self) -> list[dict]:
         import datetime
 
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -291,9 +287,10 @@ class Repository:
     def bump_schedule(self, dork_name: str, interval_minutes: int) -> None:
         import datetime
 
-        next_run = (
-            datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=interval_minutes)
-        ).isoformat()
+        next_run = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+            minutes=interval_minutes
+        )
+        next_run = next_run.isoformat()
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         with self._lock:
             self._conn.execute(
@@ -314,9 +311,7 @@ class Repository:
 
     def delete_schedule(self, dork_name: str) -> None:
         with self._lock:
-            self._conn.execute(
-                "DELETE FROM schedules WHERE dork_name = ?", (dork_name,)
-            )
+            self._conn.execute("DELETE FROM schedules WHERE dork_name = ?", (dork_name,))
             self._conn.commit()
 
     def close(self) -> None:

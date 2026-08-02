@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import random
 import time
-from typing import List, Optional
-from urllib.parse import urlencode
 
 import requests
 from bs4 import BeautifulSoup
@@ -16,9 +14,12 @@ from ..core.ratelimit import RateLimiter, default_limiter
 from .base import BlockedError, RateLimitedError, SearchEngine
 
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 "
+    "(KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
 ]
 
 
@@ -29,10 +30,10 @@ class BingEngine(SearchEngine):
 
     def __init__(
         self,
-        limiter: Optional[RateLimiter] = None,
-        session: Optional[requests.Session] = None,
+        limiter: RateLimiter | None = None,
+        session: requests.Session | None = None,
         timeout: float = 15.0,
-        proxies: Optional[ProxyPool] = None,
+        proxies: ProxyPool | None = None,
     ) -> None:
         self.limiter = limiter or default_limiter()
         self.session = session or requests.Session()
@@ -49,7 +50,10 @@ class BingEngine(SearchEngine):
             resp = self.session.get(
                 "https://www.bing.com/search",
                 params=params,
-                headers={"User-Agent": random.choice(USER_AGENTS), "Accept-Language": "en-US,en;q=0.9"},
+                headers={
+                    "User-Agent": random.choice(USER_AGENTS),
+                    "Accept-Language": "en-US,en;q=0.9",
+                },
                 timeout=self.timeout,
                 proxies=proxy,
             )
@@ -65,9 +69,9 @@ class BingEngine(SearchEngine):
             resp.raise_for_status()
         return resp.text
 
-    def _parse(self, html: str, query: str, position_offset: int = 0) -> List[SearchResult]:
+    def _parse(self, html: str, query: str, position_offset: int = 0) -> list[SearchResult]:
         soup = BeautifulSoup(html, "html.parser")
-        results: List[SearchResult] = []
+        results: list[SearchResult] = []
         for i, li in enumerate(soup.select("li.b_algo")):
             h2 = li.select_one("h2")
             a = li.select_one("h2 a")
@@ -96,9 +100,9 @@ class BingEngine(SearchEngine):
         query: str,
         pages: int = 1,
         per_page: int = 10,
-        stop_at: Optional[int] = None,
-    ) -> List[SearchResult]:
-        results: List[SearchResult] = []
+        stop_at: int | None = None,
+    ) -> list[SearchResult]:
+        results: list[SearchResult] = []
         for page in range(1, pages + 1):
             html = self._fetch_page(query, page, per_page)
             results.extend(self._parse(html, query, position_offset=len(results)))

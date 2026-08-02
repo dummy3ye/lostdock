@@ -5,20 +5,20 @@ from __future__ import annotations
 import csv
 import html
 import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, List
 
 from ..core.models import SearchResult
 
 
-def export_json(results: List[SearchResult], path: str | Path) -> None:
+def export_json(results: list[SearchResult], path: str | Path) -> None:
     Path(path).write_text(
         json.dumps([r.to_dict() for r in results], indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
 
 
-def export_csv(results: List[SearchResult], path: str | Path) -> None:
+def export_csv(results: list[SearchResult], path: str | Path) -> None:
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.writer(f)
         writer.writerow(["position", "title", "url", "snippet", "engine", "query"])
@@ -26,8 +26,8 @@ def export_csv(results: List[SearchResult], path: str | Path) -> None:
             writer.writerow([r.position, r.title, r.url, r.snippet, r.engine, r.query])
 
 
-def export_markdown(results: List[SearchResult], path: str | Path) -> None:
-    lines: List[str] = ["# Dork Results", ""]
+def export_markdown(results: list[SearchResult], path: str | Path) -> None:
+    lines: list[str] = ["# Dork Results", ""]
     for r in results:
         lines.append(f"## {r.title}")
         lines.append(f"- **URL**: {r.url}")
@@ -38,15 +38,16 @@ def export_markdown(results: List[SearchResult], path: str | Path) -> None:
     Path(path).write_text("\n".join(lines), encoding="utf-8")
 
 
-def export_html(results: List[SearchResult], path: str | Path) -> None:
+def export_html(results: list[SearchResult], path: str | Path) -> None:
     """Self-contained HTML report with clickable links."""
     rows = []
     for r in results:
         rows.append(
             "<tr>"
             f"<td>{r.position}</td>"
-            f'<td>{html.escape(r.title)}</td>'
-            f'<td><a href="{html.escape(r.url)}" target="_blank" rel="noopener">{html.escape(r.url)}</a></td>'
+            f"<td>{html.escape(r.title)}</td>"
+            f'<td><a href="{html.escape(r.url)}" target="_blank" rel="noopener">'
+            f"{html.escape(r.url)}</a></td>"
             f"<td>{html.escape(r.snippet[:300])}</td>"
             f"<td>{html.escape(r.engine)}</td>"
             "</tr>"
@@ -57,10 +58,12 @@ def export_html(results: List[SearchResult], path: str | Path) -> None:
 <meta charset="utf-8">
 <title>LostDock Report</title>
 <style>
-  body {{ font-family: -apple-system, "Segoe UI", Roboto, sans-serif; margin: 2rem; color: #1f2328; }}
+  body {{ font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+         margin: 2rem; color: #1f2328; }}
   h1 {{ font-size: 1.4rem; }}
   table {{ border-collapse: collapse; width: 100%; margin-top: 1rem; }}
-  th, td {{ border: 1px solid #d0d7de; padding: 6px 10px; text-align: left; vertical-align: top; font-size: 0.9rem; }}
+  th, td {{ border: 1px solid #d0d7de; padding: 6px 10px; text-align: left;
+           vertical-align: top; font-size: 0.9rem; }}
   th {{ background: #f6f8fa; }}
   tr:nth-child(even) td {{ background: #fbfbfc; }}
   a {{ color: #0969da; text-decoration: none; }}
@@ -72,7 +75,7 @@ def export_html(results: List[SearchResult], path: str | Path) -> None:
 <table>
 <thead><tr><th>#</th><th>Title</th><th>URL</th><th>Snippet</th><th>Engine</th></tr></thead>
 <tbody>
-{''.join(rows)}
+{"".join(rows)}
 </tbody>
 </table>
 </body>

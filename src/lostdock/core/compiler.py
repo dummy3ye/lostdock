@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-from typing import List
-
 from .models import Dork
 
 
-def _quote_phrase(terms: List[str]) -> List[str]:
+def _quote_phrase(terms: list[str]) -> list[str]:
     return [f'"{t}"' if " " in t else t for t in terms if t]
 
 
 def compile_dork(dork: Dork) -> str:
     """Render a Dork object into a Google-compatible query string."""
-    parts: List[str] = []
+    parts: list[str] = []
 
     if dork.exact_phrase:
         parts.append(f'"{dork.exact_phrase}"')

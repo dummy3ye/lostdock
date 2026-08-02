@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import logging
-import random
 import threading
 import time
-from typing import Dict, List, Optional
 
 import requests
 
@@ -23,24 +21,24 @@ class ProxyPool:
 
     def __init__(
         self,
-        proxies: Optional[List[Dict[str, str]]] = None,
+        proxies: list[dict[str, str]] | None = None,
         cooldown: float = 60.0,
     ) -> None:
         self.cooldown = cooldown
         self._lock = threading.Lock()
-        self._proxies: List[Dict[str, str]] = []
-        self._disabled_until: Dict[int, float] = {}
+        self._proxies: list[dict[str, str]] = []
+        self._disabled_until: dict[int, float] = {}
         for proxy in proxies or []:
             self.add(proxy)
 
     @classmethod
-    def from_strings(cls, proxy_strings: List[str]) -> "ProxyPool":
+    def from_strings(cls, proxy_strings: list[str]) -> ProxyPool:
         pool = cls()
         for p in proxy_strings:
             pool.add(p)
         return pool
 
-    def add(self, proxy: Dict[str, str] | str) -> None:
+    def add(self, proxy: dict[str, str] | str) -> None:
         if isinstance(proxy, str):
             entry = {"http": proxy, "https": proxy}
         else:
@@ -52,14 +50,12 @@ class ProxyPool:
         with self._lock:
             return len(self._proxies)
 
-    def next(self) -> Optional[Dict[str, str]]:
+    def next(self) -> dict[str, str] | None:
         """Return the next available proxy (or None if none enabled)."""
         now = time.monotonic()
         with self._lock:
             candidates = [
-                (i, p)
-                for i, p in enumerate(self._proxies)
-                if self._disabled_until.get(i, 0) <= now
+                (i, p) for i, p in enumerate(self._proxies) if self._disabled_until.get(i, 0) <= now
             ]
             if not candidates:
                 return None
@@ -68,7 +64,7 @@ class ProxyPool:
                 self._proxies.append(self._proxies.pop(idx))
             return proxy
 
-    def mark_failed(self, proxy: Dict[str, str] | None) -> None:
+    def mark_failed(self, proxy: dict[str, str] | None) -> None:
         if proxy is None:
             return
         with self._lock:
@@ -86,7 +82,7 @@ class ProxyPool:
         """Remove proxies that fail a quick request."""
         with self._lock:
             proxies = list(self._proxies)
-        healthy: List[Dict[str, str]] = []
+        healthy: list[dict[str, str]] = []
         for p in proxies:
             try:
                 requests.get(

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional
 from urllib.parse import urlparse
 
 from ..core.models import SearchResult
@@ -18,9 +17,9 @@ def _normalize_domain(domain: str) -> str:
 class ResultFilter:
     """Filters results by allowed/blocked domains and regex patterns."""
 
-    whitelist: List[str] = field(default_factory=list)
-    blacklist: List[str] = field(default_factory=list)
-    url_patterns: List[str] = field(default_factory=list)  # regexes; keep if match
+    whitelist: list[str] = field(default_factory=list)
+    blacklist: list[str] = field(default_factory=list)
+    url_patterns: list[str] = field(default_factory=list)  # regexes; keep if match
     keep_duplicates: bool = False
 
     def _passes_domain(self, url: str) -> bool:
@@ -40,8 +39,8 @@ class ResultFilter:
             return True
         return any(re.search(p, url) for p in self.url_patterns)
 
-    def apply(self, results: List[SearchResult]) -> List[SearchResult]:
-        out: List[SearchResult] = []
+    def apply(self, results: list[SearchResult]) -> list[SearchResult]:
+        out: list[SearchResult] = []
         seen_urls: set[str] = set()
         for r in results:
             if not self._passes_domain(r.url):
