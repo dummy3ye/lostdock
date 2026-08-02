@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import requests
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import (
     QDialog,
@@ -18,12 +19,11 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from ..core.proxy import ProxyPool
 from ..services.repository import Repository
 
 
 class _ProxyTester(QThread):
-    """Tests proxies off the UI thread so the dialog stays responsive."""
+    """Tests proxies against a real Google search off the UI thread."""
 
     finished_with = Signal(list)  # list[tuple[str, bool, str]]
 
@@ -32,11 +32,30 @@ class _ProxyTester(QThread):
         self.proxy_strings = proxy_strings
 
     def run(self) -> None:
-        pool = ProxyPool.from_strings(self.proxy_strings)
-        results = [
-            (url, ok, "OK" if ok else "unreachable")
-            for url, ok in pool.check_all(test_url="https://www.google.com")
-        ]
+        from lostdock.adapters.google import _looks_blocked
+
+        results = []
+        for url in self.proxy_strings:
+            entry = {"http": url, "https": url}
+            try:
+                resp = requests.get(
+                    "https://www.google.com/search",
+                    params={"q": "test", "hl": "en", "num": "10"},
+                    proxies=entry,
+                    timeout=10,
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+                    },
+                )
+                if resp.status_code != 200:
+                    results.append((url, False, f"HTTP {resp.status_code}"))
+                elif _looks_blocked(resp.text):
+                    results.append((url, False, "blocked by Google"))
+                else:
+                    results.append((url, True, "OK"))
+            except requests.RequestException:
+                results.append((url, False, "unreachable"))
         self.finished_with.emit(results)
 
 

@@ -105,6 +105,25 @@ def _google_429_message(query: str) -> str:
     )
 
 
+def _looks_blocked(html: str) -> bool:
+    """Detect Google's various anti-bot pages regardless of which variant is served.
+
+    Google returns several block shapes depending on client and network:
+    a ``/sorry`` CAPTCHA, an "unusual traffic" interstitial, and a JS-required
+    shell (``enablejs``) that returns HTTP 200 with zero results.
+    """
+    low = html.lower()
+    markers = (
+        "/sorry",
+        "unusual traffic",
+        "enable javascript",
+        "enablejs",
+        "detected unusual traffic",
+        "are not a robot",
+    )
+    return any(m in low for m in markers)
+
+
 class GoogleEngine(SearchEngine):
     """Scrapes Google SERP HTML.
 
@@ -176,8 +195,15 @@ class GoogleEngine(SearchEngine):
             "hl": "en",
             "udm": "14",  # classic web view: avoids AI Overview / heavy JS
         }
-        for attempt in range(self.max_retries + 1):
+        attempts = self.max_retries + 1
+        if self.proxies:
+            attempts = max(attempts, len(self.proxies) + 1)
+        last_error: Exception | None = None
+        for attempt in range(attempts):
             proxy = self._request_proxies()
+            if proxy is None and self.proxies:
+                # every proxy is in cooldown; nothing left to try
+                break
             try:
                 resp = self.session.get(
                     "https://www.google.com/search",
@@ -189,21 +215,31 @@ class GoogleEngine(SearchEngine):
             except requests.RequestException:
                 if self.proxies:
                     self.proxies.mark_failed(proxy)
-                if attempt < self.max_retries:
+                if attempt < attempts - 1:
                     self._sleep_backoff(attempt, retry_after=None)
                     continue
                 raise
             if resp.status_code == 429:
-                if attempt < self.max_retries:
+                if self.proxies:
+                    self.proxies.mark_failed(proxy)
+                if attempt < attempts - 1:
                     retry_after = resp.headers.get("Retry-After")
                     self._sleep_backoff(attempt, retry_after)
                     continue
                 raise RateLimitedError(_google_429_message(query))
-            if resp.status_code in (403, 503) or "unusual traffic" in resp.text.lower():
-                raise BlockedError("Google served a CAPTCHA / bot-check page")
+            if resp.status_code in (403, 503) or _looks_blocked(resp.text):
+                if self.proxies:
+                    self.proxies.mark_failed(proxy)
+                last_error = BlockedError("Google served a CAPTCHA / bot-check page")
+                if attempt < attempts - 1:
+                    self._sleep_backoff(attempt, retry_after=None)
+                    continue
+                raise last_error
             if resp.status_code != 200:
                 resp.raise_for_status()
             return resp.text
+        if last_error is not None:
+            raise last_error
         raise RateLimitedError(_google_429_message(query))
 
     def _fetch_browser(self, query: str, start: int, per_page: int, cause: Exception) -> str:
@@ -219,7 +255,7 @@ class GoogleEngine(SearchEngine):
             raise RateLimitedError(
                 f"{cause}\n\nHeadless-browser fallback unavailable: {exc}"
             ) from exc
-        if "/sorry" in html or "unusual traffic" in html.lower():
+        if _looks_blocked(html):
             raise BlockedError(
                 "Google blocked this network at the IP level (CAPTCHA). Add proxies "
                 "in Tools -> Settings to search Google, or use another engine."
