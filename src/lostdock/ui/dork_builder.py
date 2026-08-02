@@ -118,10 +118,7 @@ class DorkBuilder(QWidget):
 
         self.preview = QLabel("")
         self.preview.setWordWrap(True)
-        self.preview.setStyleSheet(
-            "background:#1e1e2e; color:#cdd6f4; padding:8px; "
-            "border-radius:4px; font-family:monospace;"
-        )
+        self.preview.setProperty("class", "preview")
         layout.addWidget(QLabel("Query preview"))
         layout.addWidget(self.preview)
 

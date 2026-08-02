@@ -32,6 +32,7 @@ from ..services.scheduler import Scheduler
 from .dork_builder import DorkBuilder
 from .results_view import ResultsView
 from .settings import SettingsDialog
+from .theme import stylesheet
 from .worker import CrawlWorker, SearchWorker, run_crawl, run_search
 
 
@@ -47,6 +48,7 @@ class MainWindow(QMainWindow):
             repo, on_run=self._on_scheduled_run, on_error=self._on_scheduled_error
         )
         self._build_ui()
+        self._apply_theme(dark=True)
         self.scheduler.start()
         self.setWindowTitle("LostDock — Google Dorking")
         self.resize(1180, 760)
@@ -143,9 +145,21 @@ class MainWindow(QMainWindow):
         file_menu.addAction("Export Results...", self._on_export)
         file_menu.addSeparator()
         file_menu.addAction("&Quit", self.close)
+        view_menu = menu.addMenu("&View")
+        self.dark_action = view_menu.addAction("&Dark Mode")
+        self.dark_action.setCheckable(True)
+        self.dark_action.setChecked(True)
+        self.dark_action.triggered.connect(self._on_theme_toggle)
         tools_menu = menu.addMenu("&Tools")
         tools_menu.addAction("Settings...", self._on_settings)
         tools_menu.addAction("Re-check URLs", self._on_recrawl)
+
+    def _apply_theme(self, dark: bool) -> None:
+        QApplication.instance().setStyleSheet(stylesheet(dark))
+        self.dark_action.setChecked(dark)
+
+    def _on_theme_toggle(self, checked: bool) -> None:
+        self._apply_theme(checked)
 
     def _build_status(self) -> None:
         status = QStatusBar()
