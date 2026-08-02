@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=LostDock
+GenericName=OSInt Dorking Tool
+Comment=A gui dorking tool for OSInt
+Exec=lostdock
+Icon=lostdock
+Terminal=false
+Categories=Utility;Network;WebBrowser;

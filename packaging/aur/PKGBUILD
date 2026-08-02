@@ -1,0 +1,66 @@
+# Maintainer: waterw0rks <your@email.invalid>
+
+pkgname=lostdock
+pkgver=0.3.2
+pkgrel=1
+pkgdesc="A gui dorking tool for OSInt (cross-platform, PySide6)"
+arch=('x86_64')
+url="https://github.com/dummy3ye/lostdock"
+license=('MIT')
+depends=(
+    'libglvnd'      # provides libEGL + libGL
+    'libxkbcommon'
+    'dbus'
+    'libxcb'
+    'libxinerama'
+    'libxrandr'
+    'libxi'
+    'libxcursor'
+    'fontconfig'
+    'freetype2'
+    'gdk-pixbuf2'
+    'glib2'
+    'pango'
+)
+optdepends=(
+    'chromium: headless-browser fallback for the google engine (python -m playwright install chromium)'
+)
+source=(
+    "$pkgname-linux-$pkgver.tar.gz::https://github.com/dummy3ye/lostdock/releases/download/v$pkgver/lostdock-linux-$pkgver.tar.gz"
+    "logo.png::https://raw.githubusercontent.com/dummy3ye/lostdock/v$pkgver/assets/logo.png"
+)
+sha256sums=(
+    'a4c7d7d9f149dfd30d01e6eb6057d82860b1a68b621a7a5173f78a4891866cb4'
+    'b0652bc8655a00f6e6100176cfbb8fec2a5e5c25df6d5a5874512381cd8f3079'
+)
+
+build() {
+    # Desktop entry is generated here because the release tarball ships only the
+    # app binary; generating it keeps the AUR package self-contained.
+    cat > "$srcdir/lostdock.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=LostDock
+GenericName=OSINT Dorking Tool
+Comment=A GUI dorking tool for OSINT
+Exec=lostdock
+Icon=lostdock
+Terminal=false
+Categories=Utility;Network;WebBrowser;
+EOF
+}
+
+package() {
+    install -dm755 "$pkgdir/opt/$pkgname"
+    cp -a "$srcdir/lostdock" "$srcdir/_internal" "$pkgdir/opt/$pkgname/"
+    # The release tarball ships the binary without the exec bit; restore it.
+    chmod +x "$pkgdir/opt/$pkgname/lostdock"
+
+    install -dm755 "$pkgdir/usr/bin"
+    ln -s "/opt/$pkgname/lostdock" "$pkgdir/usr/bin/lostdock"
+
+    install -Dm644 "$srcdir/logo.png" "$pkgdir/usr/share/pixmaps/lostdock.png"
+
+    install -Dm644 "$srcdir/lostdock.desktop" \
+        "$pkgdir/usr/share/applications/lostdock.desktop"
+}

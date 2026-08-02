@@ -122,6 +122,7 @@ jobs:
 
       - name: Package archives
         run: |
+          chmod +x linux/lostdock
           tar -czf "lostdock-linux-${{ steps.version.outputs.version }}.tar.gz" -C linux .
           (cd windows && zip -r "../lostdock-windows-${{ steps.version.outputs.version }}.zip" .)
           ls -lh lostdock-linux-*.tar.gz lostdock-windows-*.zip

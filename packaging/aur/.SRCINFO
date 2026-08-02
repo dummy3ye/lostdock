@@ -1,0 +1,26 @@
+pkgbase = lostdock
+	pkgdesc = A gui dorking tool for OSInt (cross-platform, PySide6)
+	pkgver = 0.3.2
+	pkgrel = 1
+	url = https://github.com/dummy3ye/lostdock
+	arch = x86_64
+	license = MIT
+	depends = libegl1
+	depends = libgl1
+	depends = libxkbcommon
+	depends = libdbus-1-3
+	depends = libxcb
+	depends = libxinerama
+	depends = libxrandr
+	depends = libxi
+	depends = libxcursor
+	depends = fontconfig
+	depends = libfreetype6
+	depends = libgdk-pixbuf2
+	optdepends = chromium: headless-browser fallback for the google engine (python -m playwright install chromium)
+	source = lostdock-linux-0.3.2.tar.gz::https://github.com/dummy3ye/lostdock/releases/download/v0.3.2/lostdock-linux-0.3.2.tar.gz
+	source = logo.png::https://raw.githubusercontent.com/dummy3ye/lostdock/v0.3.2/assets/logo.png
+	sha256sums = a4c7d7d9f149dfd30d01e6eb6057d82860b1a68b621a7a5173f78a4891866cb4
+	sha256sums = b0652bc8655a00f6e6100176cfbb8fec2a5e5c25df6d5a5874512381cd8f3079
+
+pkgname = lostdock
