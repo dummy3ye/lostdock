@@ -1,26 +1,31 @@
 """Service layer."""
 
-from .repository import Repository
-from .exporter import export_results, export_json, export_csv, export_markdown, export_html
-from .executor import Executor
+from .crawler import CrawlReport, crawl_url
+from .exporter import (
+    export_csv,
+    export_html,
+    export_json,
+    export_markdown,
+    export_results,
+)
 from .filter import ResultFilter
-from .crawler import crawl_url, crawl_many, CrawlReport
-from .scheduler import Scheduler
 from .plugins import Plugin, discover_plugins
+from .query import run_query
+from .repository import Repository
+from .scheduler import Scheduler
 
 __all__ = [
-    "Repository",
-    "export_results",
-    "export_json",
-    "export_csv",
-    "export_markdown",
-    "export_html",
-    "Executor",
-    "ResultFilter",
-    "crawl_url",
-    "crawl_many",
     "CrawlReport",
-    "Scheduler",
     "Plugin",
+    "Repository",
+    "ResultFilter",
+    "Scheduler",
+    "crawl_url",
     "discover_plugins",
+    "export_csv",
+    "export_html",
+    "export_json",
+    "export_markdown",
+    "export_results",
+    "run_query",
 ]

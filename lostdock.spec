@@ -50,7 +50,7 @@ a = Analysis(
         "lostdock.adapters.bing",
         "lostdock.services",
         "lostdock.services.repository",
-        "lostdock.services.executor",
+        "lostdock.services.query",
         "lostdock.services.filter",
         "lostdock.services.crawler",
         "lostdock.services.scheduler",

@@ -64,7 +64,7 @@ that runs on **Windows, macOS, and Linux**.
 └───────────────┬────────────────────────────────────────┘
 ┌───────────────▼────────────────────────────────────────┐
 │  Service Layer                                          │
-│  Repository │ Executor │ Filter │ Crawler │ Scheduler   │
+│  Repository │ Query │ Filter │ Crawler │ Scheduler │
 │  Exporter │ Plugins                                     │
 └───────────────┬────────────────────────────────────────┘
 ┌───────────────▼────────────────────────────────────────┐
@@ -263,7 +263,7 @@ Project layout:
 src/lostdock/
 ├── core/         Dork model, operators, query compiler, rate limiter, proxy pool
 ├── adapters/     Google / DuckDuckGo / Bing engine adapters
-├── services/     repository, executor, filter, crawler, scheduler, exporter, plugins
+├── services/     repository, query, filter, crawler, scheduler, exporter, plugins
 ├── ui/           PySide6 widgets: dork builder, results grid, worker, settings, main window
 └── main.py       entry point
 tests/            pytest suite (compiler, engines, services, proxy, scheduler, plugins)

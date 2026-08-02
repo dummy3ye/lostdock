@@ -2,25 +2,23 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from PySide6.QtCore import QObject, QThread, Signal
 
 from ..adapters import SearchEngine
-from ..core.models import Dork, SearchResult
-from ..core.compiler import compile_dork
+from ..core.models import Dork
 from ..services.crawler import crawl_url
 from ..services.plugins import Plugin
+from ..services.query import run_query
 from ..services.repository import Repository
 
 
 class SearchWorker(QObject):
     """Runs a dork search off the UI thread, emitting results as they arrive."""
 
-    result_ready = Signal(object)          # SearchResult
-    finished = Signal(int)                 # total collected
-    failed = Signal(str)                   # error message
-    status = Signal(str)                   # progress message
+    result_ready = Signal(object)  # SearchResult
+    finished = Signal(int)  # total collected
+    failed = Signal(str)  # error message
+    status = Signal(str)  # progress message
 
     def __init__(
         self,
@@ -28,8 +26,8 @@ class SearchWorker(QObject):
         repo: Repository,
         dork: Dork,
         pages: int = 1,
-        stop_at: Optional[int] = None,
-        plugins: Optional[List[Plugin]] = None,
+        stop_at: int | None = None,
+        plugins: list[Plugin] | None = None,
     ) -> None:
         super().__init__()
         self.engine = engine
@@ -44,33 +42,18 @@ class SearchWorker(QObject):
         self._cancelled = True
 
     def run(self) -> None:
-        total = 0
-        job_id = None
-        try:
-            query = compile_dork(self.dork)
-            job_id = self.repo.create_job(query, self.engine.name)
-            for result in self.engine.search(
-                query, pages=self.pages, stop_at=self.stop_at
-            ):
-                if self._cancelled:
-                    break
-                for plugin in self.plugins:
-                    result = plugin.call("on_result", result)
-                    if result is None:
-                        break
-                if result is None:
-                    continue
-                self.repo.add_result(job_id, result)
-                self.result_ready.emit(result)
-                total += 1
-            if job_id:
-                self.repo.dedup(job_id)
-                self.repo.finish_job(job_id)
-            self.finished.emit(total)
-        except Exception as exc:  # noqa: BLE001 - surface to UI
-            if job_id:
-                self.repo.fail_job(job_id)
-            self.failed.emit(str(exc))
+        collected = run_query(
+            self.engine,
+            self.repo,
+            self.dork,
+            pages=self.pages,
+            stop_at=self.stop_at,
+            plugins=self.plugins,
+            on_result=lambda result: self.result_ready.emit(result),
+            on_error=lambda exc: self.failed.emit(str(exc)),
+            is_cancelled=lambda: self._cancelled,
+        )
+        self.finished.emit(len(collected))
 
 
 def run_search(
@@ -78,8 +61,8 @@ def run_search(
     repo: Repository,
     dork: Dork,
     pages: int = 1,
-    stop_at: Optional[int] = None,
-    plugins: Optional[List[Plugin]] = None,
+    stop_at: int | None = None,
+    plugins: list[Plugin] | None = None,
 ) -> SearchWorker:
     """Start a search in a new QThread; returns the worker.
 
@@ -103,14 +86,14 @@ def run_search(
 class CrawlWorker(QObject):
     """Re-checks URLs off the UI thread, emitting reports as they arrive."""
 
-    report_ready = Signal(object)      # CrawlReport
-    finished = Signal(int)             # total crawled
-    failed = Signal(str)               # error message
+    report_ready = Signal(object)  # CrawlReport
+    finished = Signal(int)  # total crawled
+    failed = Signal(str)  # error message
 
     def __init__(
         self,
-        urls: List[str],
-        repo: Optional[Repository] = None,
+        urls: list[str],
+        repo: Repository | None = None,
         persist: bool = False,
     ) -> None:
         super().__init__()
@@ -136,13 +119,13 @@ class CrawlWorker(QObject):
                 self.report_ready.emit(report)
                 total += 1
             self.finished.emit(total)
-        except Exception as exc:  # noqa: BLE001 - surface to UI
+        except Exception as exc:
             self.failed.emit(str(exc))
 
 
 def run_crawl(
-    urls: List[str],
-    repo: Optional[Repository] = None,
+    urls: list[str],
+    repo: Repository | None = None,
     persist: bool = False,
 ) -> CrawlWorker:
     """Start a URL re-check in a new QThread; returns the worker."""

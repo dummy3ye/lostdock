@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import logging
 import threading
-import time
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from ..adapters import ENGINES
-from ..core.compiler import compile_dork
 from ..core.proxy import ProxyPool
 from ..services.repository import Repository
+from .query import run_query
 
 log = logging.getLogger(__name__)
 
@@ -18,17 +17,17 @@ log = logging.getLogger(__name__)
 class Scheduler:
     """Polls the repository for due schedules and runs them in a worker thread.
 
-    Each run creates a new job (via the engine's executor path in the worker)
-    and stores results. The `on_run` callback fires once per completed run.
+    Each run creates a new job and stores results via the shared query path.
+    The `on_run` callback fires once per completed run.
     """
 
     def __init__(
         self,
         repo: Repository,
         poll_seconds: float = 30.0,
-        proxies: Optional[ProxyPool] = None,
-        on_run: Optional[Callable[[str, int], None]] = None,
-        on_error: Optional[Callable[[str, str], None]] = None,
+        proxies: ProxyPool | None = None,
+        on_run: Callable[[str, int], None] | None = None,
+        on_error: Callable[[str, str], None] | None = None,
     ) -> None:
         self.repo = repo
         self.poll_seconds = poll_seconds
@@ -36,7 +35,7 @@ class Scheduler:
         self.on_run = on_run
         self.on_error = on_error
         self._stop = threading.Event()
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -58,7 +57,7 @@ class Scheduler:
                     if self._stop.is_set():
                         break
                     self._run_schedule(schedule)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 log.exception("Scheduler loop error")
                 if self.on_error:
                     self.on_error("scheduler", str(exc))
@@ -76,22 +75,22 @@ class Scheduler:
             engine = ENGINES[engine_name](proxies=self.proxies)
         except KeyError:
             engine = ENGINES["duckduckgo"](proxies=self.proxies)
-        query = compile_dork(dork)
-        job_id = self.repo.create_job(query, engine.name)
-        count = 0
+        failed = {"value": False}
         try:
-            for result in engine.search(query, pages=1):
-                self.repo.add_result(job_id, result)
-                count += 1
-            self.repo.dedup(job_id)
-            self.repo.finish_job(job_id)
-        except Exception as exc:  # noqa: BLE001
-            self.repo.fail_job(job_id)
-            log.warning("Scheduled dork %s failed: %s", name, exc)
-            if self.on_error:
-                self.on_error(name, str(exc))
-            return
+            collected = run_query(
+                engine,
+                self.repo,
+                dork,
+                pages=1,
+                on_error=lambda exc: self._note_error(name, str(exc), failed),
+            )
         finally:
             self.repo.bump_schedule(name, schedule["interval_minutes"])
-        if self.on_run:
-            self.on_run(name, count)
+        if not failed["value"] and self.on_run:
+            self.on_run(name, len(collected))
+
+    def _note_error(self, name: str, message: str, failed: dict) -> None:
+        failed["value"] = True
+        log.warning("Scheduled dork %s failed: %s", name, message)
+        if self.on_error:
+            self.on_error(name, message)
