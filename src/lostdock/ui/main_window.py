@@ -105,7 +105,8 @@ class MainWindow(QMainWindow):
         for name in ENGINES:
             label = "chrome (pipe)" if name == "google-chrome" else name
             self.engine_combo.addItem(label, name)
-        self.engine_combo.setCurrentIndex(0)
+        chrome_idx = self.engine_combo.findData("google-chrome")
+        self.engine_combo.setCurrentIndex(chrome_idx if chrome_idx >= 0 else 0)
         self.toolbar.addWidget(self.engine_combo)
 
         self.toolbar.addWidget(QLabel("Pages"))
