@@ -1,6 +1,5 @@
 from lostdock.adapters.google import GoogleEngine
 
-
 SAMPLE_HTML = """
 <html><body>
 <div class="g">

@@ -5,8 +5,6 @@ from __future__ import annotations
 import logging
 import random
 import time
-from typing import List, Optional
-from urllib.parse import quote_plus
 
 import requests
 from bs4 import BeautifulSoup
@@ -19,27 +17,38 @@ from .base import BlockedError, RateLimitedError, SearchEngine
 log = logging.getLogger(__name__)
 
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 "
+    "(KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0",
 ]
 
 
-def _parse_google_serp(
-    html: str, query: str, position_offset: int = 0
-) -> List[SearchResult]:
+def _parse_google_serp(html: str, query: str, position_offset: int = 0) -> list[SearchResult]:
     """Extract organic results from a Google SERP page."""
+    from urllib.parse import parse_qs, urlparse
+
     soup = BeautifulSoup(html, "html.parser")
-    results: List[SearchResult] = []
-    for i, a in enumerate(soup.select("a[href]")):
+    results: list[SearchResult] = []
+
+    def organic_blocks():
+        blocks = soup.select("div.g")
+        if not blocks:
+            blocks = soup.select("div[data-hveid]")
+        return blocks
+
+    for i, block in enumerate(organic_blocks()):
+        a = block.find("a", href=True)
+        if a is None:
+            continue
         href = a.get("href", "")
         if not href.startswith("http") and "/url?q=" not in href:
             continue
         url = href
         if href.startswith("/url?q="):
-            from urllib.parse import parse_qs, urlparse
-
             parsed = parse_qs(urlparse(href).query)
             url = parsed.get("q", [""])[0]
 
@@ -51,14 +60,13 @@ def _parse_google_serp(
         if url.startswith(("javascript:", "data:")):
             continue
 
-        # Grab title from parent heading or link text.
-        container = a.find_parent("h3") or a.parent
-        title = (a.get_text(" ", strip=True) or container.get_text(" ", strip=True) if container else "")[:300]
+        # Prefer the heading text as the title, falling back to the anchor.
+        heading = block.find("h3")
+        title = (heading.get_text(" ", strip=True) if heading else a.get_text(" ", strip=True))[
+            :300
+        ]
 
-        snippet = ""
-        parent = a.find_parent("div")
-        if parent:
-            snippet = parent.get_text(" ", strip=True)[:400]
+        snippet = block.get_text(" ", strip=True)[:400]
 
         results.append(
             SearchResult(
@@ -76,8 +84,9 @@ def _parse_google_serp(
 def _google_429_message(query: str) -> str:
     return (
         f"Google is rate-limiting requests after several retries (429): {query!r}. "
-        "Google blocks datacenter IPs aggressively. Try: (1) adding proxies in Tools -> Settings, "
-        "or (2) switching to the DuckDuckGo or Bing engine, or (3) slowing down via Settings limits."
+        "Google blocks datacenter IPs aggressively. Try: (1) adding proxies in "
+        "Tools -> Settings, or (2) switching to the DuckDuckGo or Bing engine, "
+        "or (3) slowing down via Settings limits."
     )
 
 
@@ -93,10 +102,10 @@ class GoogleEngine(SearchEngine):
 
     def __init__(
         self,
-        limiter: Optional[RateLimiter] = None,
-        session: Optional[requests.Session] = None,
+        limiter: RateLimiter | None = None,
+        session: requests.Session | None = None,
         timeout: float = 15.0,
-        proxies: Optional["ProxyPool"] = None,
+        proxies: ProxyPool | None = None,
         max_retries: int = 3,
         backoff_base: float = 2.0,
         backoff_max: float = 30.0,
@@ -113,7 +122,7 @@ class GoogleEngine(SearchEngine):
     def _headers(self) -> dict:
         return {"User-Agent": random.choice(USER_AGENTS)}
 
-    def _request_proxies(self) -> Optional[dict]:
+    def _request_proxies(self) -> dict | None:
         if not self.proxies or len(self.proxies) == 0:
             return None
         return self.proxies.next()
@@ -156,7 +165,7 @@ class GoogleEngine(SearchEngine):
             return resp.text
         raise RateLimitedError(_google_429_message(query))
 
-    def _sleep_backoff(self, attempt: int, retry_after: Optional[str]) -> None:
+    def _sleep_backoff(self, attempt: int, retry_after: str | None) -> None:
         """Sleep before the next retry, honoring Retry-After when provided."""
         if retry_after:
             try:
@@ -165,11 +174,11 @@ class GoogleEngine(SearchEngine):
                 return
             except ValueError:
                 pass
-        delay = min(self.backoff_base * (2 ** attempt), self.backoff_max)
+        delay = min(self.backoff_base * (2**attempt), self.backoff_max)
         delay *= random.uniform(0.8, 1.2)  # jitter
         time.sleep(delay)
 
-    def _parse(self, html: str, query: str, position_offset: int = 0) -> List[SearchResult]:
+    def _parse(self, html: str, query: str, position_offset: int = 0) -> list[SearchResult]:
         return _parse_google_serp(html, query, position_offset=position_offset)
 
     def search(
@@ -177,9 +186,9 @@ class GoogleEngine(SearchEngine):
         query: str,
         pages: int = 1,
         per_page: int = 10,
-        stop_at: Optional[int] = None,
-    ) -> List[SearchResult]:
-        results: List[SearchResult] = []
+        stop_at: int | None = None,
+    ) -> list[SearchResult]:
+        results: list[SearchResult] = []
         for page in range(pages):
             start = page * per_page
             html = self._fetch_page(query, start, per_page)
