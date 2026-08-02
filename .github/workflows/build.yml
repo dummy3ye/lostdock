@@ -76,11 +76,23 @@ jobs:
       - name: Build binary
         run: uv run pyinstaller lostdock.spec -y
 
+      - name: Build installer (Windows)
+        if: runner.os == 'Windows'
+        run: uv run pyinstaller --onefile --windowed --name lostdock-installer src/installer/windows/main.py -y
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
           path: dist/lostdock/
+          if-no-files-found: error
+
+      - name: Upload installer artifact (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lostdock-windows-installer
+          path: dist/lostdock-installer.exe
           if-no-files-found: error
 
   release:
@@ -103,6 +115,12 @@ jobs:
         with:
           name: lostdock-windows
           path: windows/
+
+      - name: Download installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: lostdock-windows-installer
+          path: installer/
 
       - name: Read version from tag
         id: version
@@ -135,4 +153,4 @@ jobs:
           gh release create "$TAG" \
             --title "LostDock v$VERSION" \
             --notes-file "${{ steps.git-cliff.outputs.changelog }}" \
-            lostdock-linux-*.tar.gz lostdock-windows-*.zip
+            lostdock-linux-*.tar.gz lostdock-windows-*.zip installer/lostdock-installer.exe
