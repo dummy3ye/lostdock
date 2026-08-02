@@ -1,36 +1,27 @@
-## [0.1.1] - 2026-08-01
+## [0.2.1] - 2026-08-02
 
 ### Features
 
-- Initial release of lostdock dorking tool
-- Register bing engine in the UI dropdown (closes #3)
-- Wire on_result and on_export hooks (closes #4)
-- Add google-chrome engine that drives real Chrome via CDP
-- Tag-driven release pipeline with git-cliff
+- Add logo png and ascii art
+- Headless-browser fallback for Google CAPTCHA blocks
+- Label chrome engine as 'chrome (pipe)' and default to it
 
 ### Bug Fixes
 
-- Render missing search toolbar (closes #1)
-- Retry with backoff on 429 and actionable error (closes #2)
-- Run URL re-check off the UI thread and persist results (closes #5)
-- Annotate results by original URL and use a dedicated Status column (closes #6)
+- Preserve search query on results round-trip
+- Remove duplicate schedule save on settings accept
+- Apply rate limiter jitter once per acquire
+- Scope google SERP parsing to organic result blocks
+- Add chrome adapter to pyinstaller hiddenimports
 
 ### Refactoring
 
-- Google-chrome engine just opens the search in Chrome
-
-### Documentation
-
-- Fix translated README back-links after moving to i18n/
-
-### CI
-
-- Build linux and windows binaries on push
-- Add auto github releases with binaries on push
-- Checkout repo in release job so gh can resolve the repo
-- Install Qt system deps for headless PySide6 tests
+- Consolidate query execution into run_query
+- Drop dead import branch for MainWindow
 
 ### Chore
 
-- Ignore local plan.md tracking notes
-- Remove redundant bot/AI-flavored comments
+- Enable ruff, auto-fix style debt, add CI lint step
+
+
+**Full Changelog**: https://github.com/dummy3ye/lostdock/compare/v0.1.1...v0.2.1
