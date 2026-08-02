@@ -58,6 +58,16 @@ _WIN98_THEMES: ClassVar[dict[str, dict[str, str]]] = {
         "titlebar_text": "#ffffff",
         "text_main": "#330011",  # Deep burgundy text
     },
+    "win98-dark": {
+        "desktop_bg": "#008080",  # Keep the classic Standard Teal desktop
+        "surface_main": "#2b2b31",  # Dark face
+        "surface_light": "#44444c",  # Highlight (lighter than face)
+        "surface_shadow": "#1a1a1f",  # Dark shadow
+        "surface_dark": "#000000",  # Outermost shadow border
+        "titlebar_active": "#3b3be0",  # Bright blue active titlebar
+        "titlebar_text": "#ffffff",
+        "text_main": "#e8e8e8",  # Light text
+    },
 }
 
 
