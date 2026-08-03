@@ -1,49 +1,193 @@
 # LostDock
 
-**LostDock** एक उद्योग-स्तरीय, क्रॉस-प्लेटफ़ॉर्म Google डॉर्किंग डेस्कटॉप टूल है, जो Python में लिखा गया है।
-यह सभी सर्च इंजन ऑपरेटरों के साथ एक विज़ुअल क्वेरी बिल्डर, रेट-लिमिटिंग और प्रॉक्सी रोटेशन के साथ
-मल्टी-इंजन निष्पादन, परिणामों का स्थायी भंडारण, URL री-चेकिंग, शेड्यूल किए गए डॉर्क, regex हाइलाइटिंग
-और एक प्लगइन सिस्टम प्रदान करता है — सब कुछ एक नेटिव PySide6 (Qt) UI में जो **Windows, macOS और Linux**
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB.svg)](https://www.python.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#इंस्टॉलेशन)
+
+**LostDock** Google dorking और OSINT अनुसंधान के लिए एक डेस्कटॉप टूल है। यह एक विज़ुअल
+डॉर्क बिल्डर को मल्टी-इंजन खोज, रेट-लिमिटिंग, प्रॉक्सी रोटेशन और स्थायी परिणाम भंडारण के
+साथ जोड़ता है — सब कुछ एक नेटिव PySide6 (Qt) इंटरफ़ेस में जो **Windows, macOS और Linux**
 पर चलता है।
 
-> पूर्ण दस्तावेज़: [README.md](../README.md)
+> **यह README पढ़ें:** [English](../README.md) · [中文](../README.zh-CN.md) · [Español](../i18n/README.es.md) · [Français](../i18n/README.fr.md) · [Deutsch](../i18n/README.de.md) · [Português](../i18n/README.pt-BR.md) · [Русский](../i18n/README.ru.md) · [日本語](../README.ja.md) · [한국어](../i18n/README.ko.md) · [Italiano](../i18n/README.it.md) · [العربية](../i18n/README.ar.md)
+
+---
+
+## विषय-सूची
+
+- [विशेषताएँ](#विशेषताएँ)
+- [आर्किटेक्चर](#आर्किटेक्चर)
+- [इंस्टॉलेशन](#इंस्टॉलेशन)
+- [उपयोग](#उपयोग)
+- [समर्थित ऑपरेटर](#समर्थित-ऑपरेटर)
+- [सर्च इंजन](#सर्च-इंजन)
+- [प्रॉक्सी](#प्रॉक्सी)
+- [शेड्यूल किए गए डॉर्क](#शेड्यूल-किए-गए-डॉर्क)
+- [URL री-चेकिंग](#url-री-चेकिंग)
+- [प्लगइन](#प्लगइन)
+- [एक्सपोर्ट](#एक्सपोर्ट)
+- [डेटा भंडारण](#डेटा-भंडारण)
+- [पैकेजिंग](#पैकेजिंग)
+- [रिलीज़](#रिलीज़)
+- [डेवलपमेंट](#डेवलपमेंट)
+- [अस्वीकरण](#अस्वीकरण)
+- [लाइसेंस](#लाइसेंस)
 
 ---
 
 ## विशेषताएँ
 
-- **विज़ुअल डॉर्क बिल्डर** — कीवर्ड, सटीक वाक्यांश, बूलियन लॉजिक (`AND`/`OR`/`NOT`), बहिष्करण,
-  आवश्यक शब्द, साइटें, फ़ाइल प्रकार और सभी Google ऑपरेटरों को लाइव प्रीव्यू के साथ जोड़ें।
-- **मल्टी-इंजन** — Google, DuckDuckGo और Bing एडेप्टर एक ही इंटरफ़ेस के पीछे।
-- **रेट लिमिटिंग और एंटी-ब्लॉक** — टोकन-बकेट लिमिटर जिटर के साथ, रोटेटिंग User-Agents,
-  बैकऑफ़ के साथ रीट्राई, और CAPTCHA/bot डिटेक्शन।
+- **विज़ुअल डॉर्क बिल्डर** — कीवर्ड, सटीक वाक्यांश, बूलियन लॉजिक (`AND`/`OR`/`NOT`),
+  बहिष्करण, आवश्यक शब्द, साइटें, फ़ाइल प्रकार और सभी Google ऑपरेटरों को लाइव प्रीव्यू के
+  साथ जोड़ें।
+- **मल्टी-इंजन खोज** — Google, DuckDuckGo और Bing एक ही इंटरफ़ेस में, साथ ही Chrome
+  "pipe" मोड जो आपके अपने ब्राउज़र में खोज चलाता है। या तीनों को एक साथ चलाएँ और परिणाम
+  मर्ज करें।
+- **रेट लिमिटिंग और एंटी-ब्लॉक** — जिटर के साथ टोकन-बकेट लिमिटर, रोटेटिंग User-Agents,
+  बैकऑफ़ के साथ रीट्राई, और CAPTCHA/bot डिटेक्शन। जब सादा HTTP ब्लॉक होता है तो Google
+  headless Chromium रेंडरिंग पर फ़ॉल बैक करता है।
 - **प्रॉक्सी रोटेशन** — राउंड-रॉबिन रोटेशन, फेल-कूलडाउन और वैलिडेशन के साथ प्रॉक्सी पूल।
 - **स्थायी भंडारण** — हर जॉब और रिज़ल्ट SQLite में, इंजनों के बीच डीडुप्लीकेटेड।
-- **URL री-चेकिंग** — संग्रहीत URL को दोबारा फेच करें और स्टेटस कोड / कंटेंट टाइप / टाइटल नोट करें।
+- **लाइव URL री-चेकिंग** — संग्रहीत URL को दोबारा फेच करें और स्टेटस कोड, कंटेंट टाइप और
+  टाइटल नोट करें।
 - **शेड्यूल किए गए डॉर्क** — सेव किए गए डॉर्क को बैकग्राउंड में नियत अंतराल पर चलाएँ।
 - **regex हाइलाइटिंग** — पैटर्न से मेल खाती पंक्तियों को तुरंत हाइलाइट करें।
-- **फ़िल्टर** — डोमेन व्हाइटलिस्ट/ब्लैकलिस्ट और URL-regex फ़िल्टर (एक्सपोर्ट पर लागू)।
-- **एक्सपोर्ट** — JSON, CSV, Markdown, और एक स्टाइलिश HTML रिपोर्ट।
-- **सेव डॉर्क लाइब्रेरी** — डॉर्क को नाम दें, सेव करें, लोड करें, हटाएँ।
-- **प्लगइन सिस्टम** — `~/.lostdock/plugins/` में Python मॉड्यूल, हुक: `setup`, `on_result`, `on_export`।
-- **क्रॉस-प्लेटफ़ॉर्म** — Windows (`.exe`), macOS (`.app`), Linux के लिए एक ही कोड पैकेज।
+- **फ़िल्टर** — डोमेन व्हाइटलिस्ट/ब्लैकलिस्ट और एक्सपोर्ट पर लागू होने वाले URL-regex
+  कीप-फ़िल्टर।
+- **एक्सपोर्ट** — JSON, CSV, Markdown और एक स्टाइलिश, सेल्फ-कंटेन्ड HTML रिपोर्ट।
+- **डॉर्क लाइब्रेरी** — डॉर्क को नाम से सेव, लोड और मैनेज करें।
+- **प्लगइन सिस्टम** — `setup`, `on_result` और `on_export` हुक वाले Python मॉड्यूल जोड़ें।
+- **थीम** — डार्क, लाइट और क्लासिक Win98 GDI स्टाइल।
+- **क्रॉस-प्लेटफ़ॉर्म** — Windows, macOS और Linux के लिए एक कोडबेस, साथ ही Windows
+  इंस्टॉलर/अपडेटर।
 
-## त्वरित उपयोग
+## आर्किटेक्चर
 
-1. क्वेरी बनाएँ: कीवर्ड, सटीक वाक्यांश, बहिष्करण, `AND`/`OR` शब्द, साइटें (`site:`), फ़ाइल प्रकार
-   और इनलाइन ऑपरेटर।
-2. इंजन और पेज चुनें।
-3. **Run Search** दबाएँ — परिणाम टेबल में आते हैं और SQLite में सेव होते हैं।
-4. **Re-check URLs** से हर रिज़ल्ट का लाइव स्टेटस जाँचें।
+```
+┌─ UI लेयर (PySide6/Qt) ────────────────────────────────┐
+│  Dork Builder │ Results Grid │ Scheduler │ Settings      │
+│  थीम (dark / light / win98)                             │
+└───────────────┬──────────────────────────────────────────┘
+┌───────────────▼──────────────────────────────────────────┐
+│  सर्विस लेयर                                              │
+│  Repository │ Query │ Filter │ Crawler │ Scheduler │      │
+│  Exporter │ Plugins                                       │
+└───────────────┬──────────────────────────────────────────┘
+┌───────────────▼──────────────────────────────────────────┐
+│  कोर इंजन                                                 │
+│  Adapters (Google / DuckDuckGo / Bing / Chrome)           │
+│  Multi-Engine (all) │ Rate Limiter │ Proxy Pool           │
+│  Compiler │ Operators                                     │
+└───────────────┬──────────────────────────────────────────┘
+┌───────────────▼──────────────────────────────────────────┐
+│  SQLite (jobs, results, dorks, schedules, config)         │
+└───────────────────────────────────────────────────────────┘
+```
+
+## इंस्टॉलेशन
+
+> इंस्टॉलेशन निर्देश जानबूझकर केवल अंग्रेज़ी में दिए गए हैं।
+
+### आवश्यकताएँ
+
+- **Python 3.10+** — [python.org](https://www.python.org/downloads/)
+- **uv** (फ़ास्ट पैकेज मैनेजर) — [docs.astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/)
+
+### चरण
+
+```bash
+# 1. रिपॉज़िटरी क्लोन करें
+git clone https://github.com/dummy3ye/lostdock.git
+cd lostdock
+
+# 2. वर्चुअल एनवायरनमेंट बनाएँ और इंस्टॉल करें
+uv venv
+uv pip install -e ".[dev]"
+
+# 3. Google इंजन के एंटी-ब्लॉक फ़ॉलबैक में उपयोग होने वाला headless Chromium इंस्टॉल करें
+uv run python -m playwright install chromium
+
+# 4. चलाएँ
+uv run lostdock
+```
+
+अगर आपके पास `uv` नहीं है, तो आप सादा `pip` इस्तेमाल कर सकते हैं:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
+python -m playwright install chromium
+lostdock
+```
+
+### विकल्प: इंस्टॉल किए बिना रिपॉज़िटरी रूट से चलाना
+
+```bash
+cd src
+QT_QPA_PLATFORM=offscreen python -m lostdock.main   # हेडलेस टेस्टिंग के लिए offscreen
+```
+
+## उपयोग
+
+1. **क्वेरी बनाएँ** — कीवर्ड टाइप करें, सटीक वाक्यांश, बहिष्करण, `AND`/`OR` शब्द, साइटें
+   (`site:`), फ़ाइल प्रकार और इनलाइन ऑपरेटर जोड़ें। कंपाइल की गई क्वेरी लाइव अपडेट होती है।
+2. **इंजन चुनें** — Google, DuckDuckGo, Bing, Chrome या "all" — और पेजों की संख्या।
+3. **Run Search** पर क्लिक करें। परिणाम टेबल में आते हैं; हर रिज़ल्ट SQLite में सेव होता है।
+4. हर रिज़ल्ट को फेच कर उसकी लाइव स्थिति नोट करने के लिए **Re-check URLs** इस्तेमाल करें।
 5. दिलचस्प पंक्तियों को उजागर करने के लिए **Highlight** regex सेट करें।
-6. **Export...** से JSON, CSV, Markdown या HTML में सेव करें।
+6. JSON, CSV, Markdown या HTML रिपोर्ट के रूप में सेव करने के लिए **Export...** पर क्लिक करें।
 
 ## समर्थित ऑपरेटर
 
-`site:` · `inurl:` · `allinurl:` · `intitle:` · `allintitle:` · `intext:` · `allintext:` · `inanchor:` ·
-`filetype:` · `ext:` · `cache:` · `link:` · `related:` · `info:` · `define:` · `author:` · `daterange:` ·
-`numrange:` · `loc:` · `after:` · `before:` · `lang:` · सटीक वाक्यांश `"..."` · बहिष्करण `-term` ·
-पर्यायवाची `~term` · वाइल्डकार्ड `*` · `term1 OR term2`।
+बिल्डर Google ऑपरेटरों का पूरा सेट सपोर्ट करता है:
+
+| ऑपरेटर | अर्थ |
+|---------|------|
+| `site:` | परिणामों को एक डोमेन तक सीमित करें |
+| `inurl:` / `allinurl:` | URL में शब्द |
+| `intitle:` / `allintitle:` | टाइटल में शब्द |
+| `intext:` / `allintext:` | बॉडी टेक्स्ट में शब्द |
+| `inanchor:` | लिंक एंकर टेक्स्ट में शब्द |
+| `filetype:` / `ext:` | फ़ाइल प्रकार तक सीमित करें |
+| `cache:` | Google की कैश्ड वर्ज़न |
+| `link:` | किसी URL से लिंक करने वाले पेज |
+| `related:` | मिलते-जुलते पेज |
+| `info:` | पेज का अवलोकन |
+| `define:` | किसी शब्द की परिभाषा |
+| `author:` | रिज़ल्ट का लेखक |
+| `daterange:` / `numrange:` | संख्यात्मक रेंज |
+| `loc:` | स्थान |
+| `after:` / `before:` | दिनांक फ़िल्टर (`YYYY-MM-DD`) |
+| `lang:` | भाषा प्रतिबंध |
+| `"phrase"` | सटीक वाक्यांश |
+| `-term` | शब्द बाहर करें |
+| `~term` | समानार्थी शामिल करें |
+| `*` | वाइल्डकार्ड |
+| `term1 OR term2` | दोनों में से कोई भी शब्द |
+
+## सर्च इंजन
+
+सभी इंजन एक ही इंटरफ़ेस (`adapters/base.py` में `SearchEngine`) साझा करते हैं और डिफ़ॉल्ट
+रूप से रेट-लिमिटेड हैं। `SearchEngine` को सबक्लास करके और `adapters/__init__.py` में
+रजिस्टर करके नया इंजन जोड़ें।
+
+- **Google** — पहले HTTP से SERP स्क्रेप करता है। अगर Google CAPTCHA या रेट-लिमिट ब्लॉक के
+  साथ जवाब देता है, तो यह पेज को वास्तविक headless Chromium (Playwright के ज़रिए) में
+  दोबारा रेंडर करता है, जो अधिकांश रेज़िडेंशियल नेटवर्क पर बिहेवियरल बॉट-डिटेक्शन को
+  बायपास करता है। डेटासेंटर IP पर Google फिर भी IP स्तर पर ब्लॉक कर सकता है — Tools →
+  Settings में प्रॉक्सी जोड़ें, या कोई दूसरा इंजन इस्तेमाल करें। Chromium बाइनरी एक बार
+  चाहिए (`python -m playwright install chromium`)। पूरी तरह से अनुरूप प्रोडक्शन उपयोग के
+  लिए Google Custom Search JSON API (100 मुफ़्त क्वेरी/दिन) इंटीग्रेट करें।
+- **DuckDuckGo** — हल्का HTML एंडपॉइंट, मध्यम गति पर स्वचालित एक्सेस के लिए आमतौर पर
+  सहिष्णु।
+- **Bing** — SERP स्क्रेपिंग; रेट-लिमिटेड और बड़े पैमाने पर बॉट-चेक से प्रभावित।
+- **Chrome (pipe)** — खोज को सीधे आपके अपने Chrome/Chromium ब्राउज़र में खोलता है ताकि आप
+  वहाँ देखें। कोई रिज़ल्ट LostDock में वापस कैप्चर नहीं होता; जब Google बाकी सब ब्लॉक कर दे
+  तो यह खोजने का सबसे सरल तरीका है। ज़रूरत पड़ने पर `LOSTDOCK_CHROME` से किसी विशेष बाइनरी
+  की ओर इंगित करें।
+- **All** — एक ही क्वेरी के लिए Google, DuckDuckGo और Bing चलाता है और परिणाम मर्ज करता है।
+  एक ब्लॉक किया गया इंजन कभी भी खोज को नहीं रोकता; परिणाम URL से डीडुप्लीकेट होते हैं।
 
 ## प्रॉक्सी
 
@@ -54,68 +198,116 @@ http://127.0.0.1:8080
 socks5://127.0.0.1:1080
 ```
 
+प्रॉक्सी हर अनुरोध पर रोटेट होते हैं; फेल हुए प्रॉक्सी कूलडाउन अवधि में जाते हैं। डेड
+प्रॉक्सी हटाने के लिए "validate" पथ (कोड में `ProxyPool.validate()`) इस्तेमाल करें।
+
 ## शेड्यूल किए गए डॉर्क
 
 1. एक डॉर्क सेव करें ("Dork name" फ़ील्ड में नाम दें)।
-2. **Tools → Settings** में उसे चुनें और अंतराल मिनटों में सेट करें।
-3. स्केड्यूलर उसे बैकग्राउंड में चलाता है और परिणाम नई जॉब के रूप में सेव करता है।
+2. **Tools → Settings** में डॉर्क चुनें, मिनटों में अंतराल सेट करें और सेव करें।
+3. बैकग्राउंड शेड्यूलर बकाया डॉर्क चलाता है, परिणाम नई जॉब के रूप में सेव करता है और अगले
+   रन को आगे बढ़ाता है।
+
+## URL री-चेकिंग
+
+**Re-check URLs** बटन मौजूदा परिणामों के हर URL को UI थ्रेड से बाहर, पॉलिटनेस डिले के साथ
+फेच करता है, हर पंक्ति पर `स्टेटस कोड`, `कंटेंट टाइप` और लाइव `<title>` नोट करता है और
+परिणाम डेटाबेस में सेव करता है। फेलियर इनलाइन नोट होते हैं और UI कभी क्रैश नहीं करते।
 
 ## प्लगइन
 
-`~/.lostdock/plugins/` में `*.py` फ़ाइलें रखें। मॉड्यूल कोई भी उपसमुच्चय एक्सपोर्ट कर सकता है:
+`*.py` फ़ाइलें `~/.lostdock/plugins/` (या बंडल `plugins/` डायरेक्टरी) में रखें। प्लगइन
+मॉड्यूल कोई भी सबसेट एक्सपोर्ट कर सकता है:
 
 ```python
 NAME = "my_plugin"
-def setup(app): ...
-def on_result(result): return result   # छोड़ने के लिए None लौटाएँ
-def on_export(results, fmt, path): ...
+
+def setup(app): ...                    # स्टार्टअप पर एक बार
+def on_result(result): return result   # रिज़ल्ट छोड़ने के लिए None लौटाएँ
+def on_export(results, fmt, path): ... # एक्सपोर्ट से पहले
 ```
+
+काम करने वाला उदाहरण `plugins/example_skip_tracking.py` देखें।
+
+## एक्सपोर्ट
+
+| फ़ॉर्मेट | एक्सटेंशन | नोट्स |
+|----------|-----------|-------|
+| JSON | `.json` | पूर्ण संरचित परिणाम |
+| CSV | `.csv` | स्प्रेडशीट-रेडी (UTF-8 BOM) |
+| Markdown | `.md` | मानव-पठनीय |
+| HTML | `.html` | सेल्फ-कंटेन्ड रिपोर्ट, क्लिक करने योग्य लिंक |
 
 ## डेटा भंडारण
 
 - **डेटाबेस:** `~/.lostdock/lostdock.db` (SQLite)
 - **प्लगइन:** `~/.lostdock/plugins/`
+- टेबल: `jobs`, `results`, `saved_dorks`, `schedules`, `settings`। पुराने डेटाबेस
+  स्वचालित रूप से माइग्रेट होते हैं।
 
-## Installation
+## पैकेजिंग
 
-> Installation instructions are intentionally provided in English only.
-
-### Prerequisites
-
-- **Python 3.10+** — [python.org](https://www.python.org/downloads/)
-- **uv** (fast package manager) — [docs.astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/)
-
-### Steps
+प्रोजेक्ट में PyInstaller के लिए `lostdock.spec` शामिल है। प्लेटफ़ॉर्म अनुसार बनाएँ:
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/your-user/lostdock.git
-cd lostdock
-
-# 2. Create a virtual environment and install
-uv venv
-uv pip install -e ".[dev]"
-
-# 3. Run
-uv run lostdock
+uv pip install pyinstaller
+pyinstaller lostdock.spec          # dist/lostdock बनाता है
 ```
 
-If you do not have `uv`, you can use plain `pip`:
+- **Windows:** `dist/lostdock.exe`, साथ ही एक-फ़ाइल `lostdock-installer.exe` जो बिना
+  एडमिन अधिकारों के इंस्टॉलर, अपडेटर और अनइंस्टॉलर के रूप में काम करता है
+  (`src/installer/windows/main.py`)।
+- **macOS:** `dist/lostdock.app` में बंडल करें (वितरण के लिए `codesign` से साइन करें)।
+- **Linux:** `dist/lostdock` बाइनरी, या AppImage/Flatpak में लपेटें। Arch Linux के लिए
+  `PKGBUILD` `packaging/aur/` में है।
+
+## रिलीज़
+
+रिलीज़ टैग-आधारित और स्वचालित हैं। नई रिलीज़ के लिए `git-cliff` चाहिए
+(`cargo install git-cliff`):
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
-lostdock
+make release                # वर्ज़न बढ़ाता है, CHANGELOG.md पुनर्जनन करता है, कमिट और टैग करता है
 ```
 
-## Disclaimer
+`make release` पिछले टैग के बाद के conventional commits पढ़कर अगला semver वर्ज़न चुनता है
+(या स्पष्ट रूप से दें: `./scripts/release.sh 0.2.0`)। फिर यह `pyproject.toml` और
+`src/lostdock/__init__.py` में वर्ज़न बढ़ाता है, टेस्ट सूट चलाता है, `CHANGELOG.md`
+पुनर्जनन करता है और एनोटेटेड `vX.Y.Z` टैग बनाता है।
 
-LostDock एक **सुरक्षा अनुसंधान और OSINT टूल** है। इसका उपयोग केवल उन्हीं सिस्टम पर करें जिनके आप
-मालिक हैं या जिनका परीक्षण करने का आपको स्पष्ट अधिकार है। सर्च इंजन की सेवा शर्तों का सम्मान करें,
-रेट सीमा कम रखें, प्रॉक्सी का ज़िम्मेदारी से उपयोग करें, और अनधिकृत पहुँच, व्यक्तिगत डेटा स्क्रैपिंग
-या किसी अवैध गतिविधि के लिए इसका उपयोग कभी न करें।
+टैग पुश करने पर CI चलता है, जो Windows और Linux बाइनरी और सेल्फ-साइन्ड Windows इंस्टॉलर
+बनाता है और [git-cliff](https://git-cliff.org) के ज़रिए स्वतः-जनित नोट्स (समूहित
+फीचर्स/फिक्स, issue संदर्भ और योगदानकर्ता) के साथ GitHub Release प्रकाशित करता है।
 
-## License
+## डेवलपमेंट
 
-MIT — [LICENSE](LICENSE) देखें।
+```bash
+uv run pytest                     # टेस्ट सूट चलाएँ
+uv run python -m compileall -q src  # imports की सैनिटी-चेक
+uv run ruff check src tests       # लिंट
+```
+
+प्रोजेक्ट संरचना:
+
+```
+src/lostdock/
+├── core/         Dork मॉडल, ऑपरेटर, क्वेरी कंपाइलर, rate limiter, proxy pool
+├── adapters/     Google / DuckDuckGo / Bing / Chrome एडेप्टर, ब्राउज़र रेंडरर
+├── services/     repository, query, filter, crawler, scheduler, exporter, plugins
+├── ui/           PySide6 विजेट: dork builder, results grid, worker, settings, theme, main window
+└── main.py       एंट्री पॉइंट
+src/installer/    Windows इंस्टॉलर/अपडेटर/अनइंस्टॉलर
+tests/            pytest सूट (compiler, engines, services, proxy, scheduler, plugins)
+```
+
+## अस्वीकरण
+
+LostDock एक **सुरक्षा अनुसंधान और OSINT टूल** है। इसका उपयोग केवल उन्हीं सिस्टम पर करें जिनके
+आप मालिक हैं या जिन पर परीक्षण का स्पष्ट अधिकार है। सर्च इंजन की सेवा शर्तों का सम्मान करें:
+रेट कम रखें, प्रॉक्सी का ज़िम्मेदारी से उपयोग करें, और अनधिकृत पहुँच, व्यक्तिगत डेटा स्क्रेपिंग
+या किसी भी अवैध गतिविधि के लिए इस टूल का कभी उपयोग न करें। लेखक दुरुपयोग के लिए ज़िम्मेदार
+नहीं हैं।
+
+## लाइसेंस
+
+MIT — [LICENSE](../LICENSE) देखें।
