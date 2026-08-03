@@ -30,6 +30,7 @@ persistent result storage — all in a native PySide6 (Qt) interface that runs o
 - [Packaging](#packaging)
 - [Releases](#releases)
 - [Development](#development)
+- [Documentation](#documentation)
 - [Disclaimer](#disclaimer)
 - [License](#license)
 
@@ -216,7 +217,7 @@ Proxies rotate per request; failed proxies go into a cooldown period. Run the
 ## URL Re-checking
 
 The **Re-check URLs** button fetches every URL in the current results off the UI
-thread with politeness delays, annotates each row with `status code`, `content type`,
+thread sequentially, annotates each row with `status code`, `content type`,
 and a live `<title>`, and persists the results back to the database. Failures are
 annotated inline and never crash the UI.
 
@@ -263,7 +264,7 @@ pyinstaller lostdock.spec          # creates dist/lostdock
 - **Windows:** `dist/lostdock.exe`, plus a one-file `lostdock-installer.exe` that acts
   as installer, updater, and uninstaller without admin rights
   (`src/installer/windows/main.py`).
-- **macOS:** bundle into `dist/lostdock.app` (sign with `codesign` for distribution).
+- **macOS:** bundle into `dist/LostDock.app` (sign with `codesign` for distribution).
 - **Linux:** `dist/lostdock` binary, or wrap in an AppImage/Flatpak. An Arch Linux
   `PKGBUILD` lives in `packaging/aur/`.
 
@@ -306,6 +307,18 @@ src/lostdock/
 src/installer/    Windows installer/updater/uninstaller
 tests/            pytest suite (compiler, engines, services, proxy, scheduler, plugins)
 ```
+
+## Documentation
+
+Detailed docs live in the [docs/](docs/) directory:
+
+- [Usage guide](docs/usage.md) — building dorks, running searches, re-checking URLs,
+  filters, and export
+- [Search engines](docs/engines.md) — adapters, rate limiting, proxies, Chrome pipe mode
+- [Scheduled dorks](docs/scheduler.md) — background scheduling
+- [Plugins](docs/plugins.md) — the plugin system reference
+- [Packaging](docs/packaging.md) — builds, the Windows installer, and the AUR package
+- [Development](docs/development.md) — setup, tests, code layout, releasing
 
 ## Disclaimer
 

@@ -253,7 +253,7 @@ pyinstaller lostdock.spec          # dist/lostdock 생성
 - **Windows:** `dist/lostdock.exe` 및 관리자 권한 없이 설치 프로그램, 업데이터,
   제거 프로그램 역할을 하는 단일 파일 `lostdock-installer.exe`
   (`src/installer/windows/main.py`).
-- **macOS:** `dist/lostdock.app`으로 번들링(배포 시 `codesign`으로 서명).
+- **macOS:** `dist/LostDock.app`으로 번들링(배포 시 `codesign`으로 서명).
 - **Linux:** `dist/lostdock` 바이너리 또는 AppImage/Flatpak으로 패키징. Arch Linux용
   `PKGBUILD`는 `packaging/aur/`에 있습니다.
 

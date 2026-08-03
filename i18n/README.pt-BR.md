@@ -263,7 +263,7 @@ pyinstaller lostdock.spec          # cria dist/lostdock
 - **Windows:** `dist/lostdock.exe`, além de um `lostdock-installer.exe` de arquivo único que
   atua como instalador, atualizador e desinstalador sem direitos de administrador
   (`src/installer/windows/main.py`).
-- **macOS:** empacote em `dist/lostdock.app` (assine com `codesign` para distribuição).
+- **macOS:** empacote em `dist/LostDock.app` (assine com `codesign` para distribuição).
 - **Linux:** binário `dist/lostdock`, ou envolva em um AppImage/Flatpak. Um `PKGBUILD` do
   Arch Linux está em `packaging/aur/`.
 

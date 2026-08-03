@@ -241,7 +241,7 @@ pyinstaller lostdock.spec          # 生成 dist/lostdock
 
 - **Windows：** `dist/lostdock.exe`，外加单文件 `lostdock-installer.exe`，无需管理员权限即可
   充当安装器、更新器与卸载器（`src/installer/windows/main.py`）。
-- **macOS：** 打包为 `dist/lostdock.app`（分发前用 `codesign` 签名）。
+- **macOS：** 打包为 `dist/LostDock.app`（分发前用 `codesign` 签名）。
 - **Linux：** `dist/lostdock` 二进制，或封装为 AppImage/Flatpak。Arch Linux 的 `PKGBUILD`
   位于 `packaging/aur/`。
 

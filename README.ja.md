@@ -255,7 +255,7 @@ pyinstaller lostdock.spec          # dist/lostdock を作成
 - **Windows:** `dist/lostdock.exe` に加え、管理者権限なしでインストーラー・アップデーター・
   アンインストーラーとして機能する単一ファイルの `lostdock-installer.exe`
   （`src/installer/windows/main.py`）。
-- **macOS:** `dist/lostdock.app` にバンドル（配布時は `codesign` で署名）。
+- **macOS:** `dist/LostDock.app` にバンドル（配布時は `codesign` で署名）。
 - **Linux:** `dist/lostdock` バイナリ、または AppImage/Flatpak にラップ。Arch Linux の
   `PKGBUILD` は `packaging/aur/` にあります。
 

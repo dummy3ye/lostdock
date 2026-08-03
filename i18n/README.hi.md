@@ -257,7 +257,7 @@ pyinstaller lostdock.spec          # dist/lostdock बनाता है
 - **Windows:** `dist/lostdock.exe`, साथ ही एक-फ़ाइल `lostdock-installer.exe` जो बिना
   एडमिन अधिकारों के इंस्टॉलर, अपडेटर और अनइंस्टॉलर के रूप में काम करता है
   (`src/installer/windows/main.py`)।
-- **macOS:** `dist/lostdock.app` में बंडल करें (वितरण के लिए `codesign` से साइन करें)।
+- **macOS:** `dist/LostDock.app` में बंडल करें (वितरण के लिए `codesign` से साइन करें)।
 - **Linux:** `dist/lostdock` बाइनरी, या AppImage/Flatpak में लपेटें। Arch Linux के लिए
   `PKGBUILD` `packaging/aur/` में है।
 
