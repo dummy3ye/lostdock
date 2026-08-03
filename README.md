@@ -264,6 +264,17 @@ pyinstaller lostdock.spec          # creates dist/lostdock
 - **Windows:** `dist/lostdock.exe`, plus a one-file `lostdock-installer.exe` that acts
   as installer, updater, and uninstaller without admin rights
   (`src/installer/windows/main.py`).
+
+  ```bash
+  lostdock-installer.exe            # open the GUI wizard
+  lostdock-installer.exe install    # install (or update if already present)
+  lostdock-installer.exe update     # fetch the latest release and replace files
+  lostdock-installer.exe uninstall  # remove app, Start Menu shortcut, and registry entry
+  ```
+
+  The installer is stdlib-only (tiny, dependency-free). It installs per-user to
+  `%LOCALAPPDATA%\LostDock\` — no admin rights needed — and registers a Start Menu
+  shortcut and an uninstall entry in the registry.
 - **macOS:** bundle into `dist/LostDock.app` (sign with `codesign` for distribution).
 - **Linux:** `dist/lostdock` binary, or wrap in an AppImage/Flatpak. An Arch Linux
   `PKGBUILD` lives in `packaging/aur/`.
